@@ -33,6 +33,7 @@ const Dashboard = () => {
   const [postContent, setPostContent] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [showPostModal, setShowPostModal] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -41,6 +42,8 @@ const Dashboard = () => {
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
+    console.log("🔍 Currently logged in user:", user?.id);
+    console.log("📧 Email:", user?.email);
     setUser(user);
     
     if (user) {
@@ -50,6 +53,7 @@ const Dashboard = () => {
         .select("*")
         .eq("id", user.id)
         .single();
+      console.log("👤 User data from users table:", userData);
       setUserData(userData);
     }
     
@@ -134,6 +138,7 @@ const Dashboard = () => {
       setPosts([{ ...data, users: userData }, ...posts]);
       setPostContent("");
       setIsAnonymous(false); // Reset to default
+      setShowPostModal(false);
       
     } catch (error: any) {
       console.error("Error creating post:", error);
@@ -260,54 +265,108 @@ const Dashboard = () => {
 
           {/* CENTER FEED */}
           <main className="col-span-6">
-            {/* CREATE POST */}
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-              <div className="flex gap-3 mb-3">
-                <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
-                <textarea
-                  value={postContent}
-                  onChange={(e) => setPostContent(e.target.value)}
-                  placeholder="Share something with your neighbors..."
-                  className="flex-1 bg-gray-100 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  rows={3}
-                />
-              </div>
-              <div className="flex items-center justify-between ml-13">
-                <div className="flex gap-4">
-                  <button className="flex items-center gap-2 text-gray-600 hover:text-green-600">
-                    <Image className="w-5 h-5" />
-                    <span className="text-sm font-medium">Photo/Video</span>
-                  </button>
-                  <button className="flex items-center gap-2 text-gray-600 hover:text-red-600">
-                    <MapPin className="w-5 h-5" />
-                    <span className="text-sm font-medium">Tag Location</span>
-                  </button>
-                  <button className="flex items-center gap-2 text-gray-600 hover:text-yellow-600">
-                    <Smile className="w-5 h-5" />
-                    <span className="text-sm font-medium">Mood</span>
-                  </button>
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isAnonymous}
-                      onChange={(e) => setIsAnonymous(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+            {/* CREATE POST BUTTON */}
+            <button
+              onClick={() => setShowPostModal(true)}
+              className="w-full bg-white rounded-lg shadow-sm p-4 mb-4 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
+              <span className="text-gray-500 text-left flex-1">Share something with your neighbors...</span>
+            </button>
+
+            {/* POST MODAL */}
+            {showPostModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
+                    <h3 className="text-xl font-bold">Create Post</h3>
+                    <button
+                      onClick={() => {
+                        setShowPostModal(false);
+                        setPostContent("");
+                        setIsAnonymous(false);
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-6">
+                    <div className="flex gap-3 mb-4">
+                      <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
+                      <div className="flex-1">
+                        <p className="font-semibold">{userData?.full_name || "User"}</p>
+                        <p className="text-sm text-gray-500">Public</p>
+                      </div>
+                    </div>
+
+                    <textarea
+                      value={postContent}
+                      onChange={(e) => setPostContent(e.target.value)}
+                      placeholder="What's on your mind?"
+                      className="w-full bg-gray-50 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[150px]"
+                      autoFocus
                     />
-                    <span className="font-medium">Post anonymously</span>
-                  </label>
-                  <button
-                    onClick={handleCreatePost}
-                    disabled={posting || !postContent.trim()}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    {posting ? "Posting..." : "Post"}
-                  </button>
+
+                    {/* Options */}
+                    <div className="mt-4 p-4 border rounded-lg">
+                      <p className="text-sm font-semibold text-gray-700 mb-3">Add to your post</p>
+                      <div className="flex gap-2">
+                        <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600">
+                          <Image className="w-5 h-5 text-green-600" />
+                          <span className="text-sm font-medium">Photo/Video</span>
+                        </button>
+                        <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600">
+                          <MapPin className="w-5 h-5 text-red-600" />
+                          <span className="text-sm font-medium">Location</span>
+                        </button>
+                        <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600">
+                          <Smile className="w-5 h-5 text-yellow-600" />
+                          <span className="text-sm font-medium">Mood</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Anonymous Option */}
+                    <label className="flex items-center gap-2 mt-4 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                      <input
+                        type="checkbox"
+                        checked={isAnonymous}
+                        onChange={(e) => setIsAnonymous(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Post anonymously</span>
+                    </label>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="p-4 border-t bg-gray-50">
+                    <button
+                      onClick={handleCreatePost}
+                      disabled={posting || !postContent.trim()}
+                      className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {posting ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Posting...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-5 h-5" />
+                          Post
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* FILE REPORT CTA */}
             <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4 mb-4 flex items-center justify-between">
