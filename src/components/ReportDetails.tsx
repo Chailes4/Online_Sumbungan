@@ -243,9 +243,11 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <p className="text-xs text-gray-500">Resident</p>
-              <p className="text-sm font-semibold">{userData?.full_name || "User"}</p>
-              <div className="w-10 h-10 bg-green-400 rounded-full"></div>
+               <div className="w-10 h-10 bg-green-400 rounded-full"></div>
+              <div className="text-left">
+                <p className="text-sm font-semibold">{userData?.full_name || user?.email?.split('@')[0] || "User"}</p>
+                <p className="text-xs text-gray-500">{userData?.barangay}</p>
+              </div>
             </div>
           </div>
         </div>

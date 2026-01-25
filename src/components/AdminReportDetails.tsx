@@ -154,9 +154,6 @@ const AdminReportDetails = ({ reportId, onBack }: { reportId: string; onBack: ()
 };
 
 
-
-
-
   const handleStatusChange = async (newStatus: string) => {
     if (!report) return;
     
