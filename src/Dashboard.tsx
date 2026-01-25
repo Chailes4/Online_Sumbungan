@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
+import FileReport from "./components/FileReport";
+import MyReports from "./components/MyReports";
+import { useRef } from "react";
+
+// Import all icons from lucide-react library
 import { 
   Home, FileText, Bell, MessageSquare, Search,
   Image, MapPin, Smile, AlertTriangle, Plus, MoreVertical,
@@ -7,6 +12,7 @@ import {
   Activity, CheckCircle, Clock, Megaphone, Trees, Send
 } from "lucide-react";
 
+// TypeScript interface defining the structure of a Post object
 interface Post {
   id: string;
   user_id: string;
@@ -15,8 +21,10 @@ interface Post {
   location: string | null;
   mood: string | null;
   is_anonymous: boolean;
-  upvotes: number;
-  downvotes: number;
+  upvotes?: number; // Calculated from votes
+  downvotes?: number; // Calculated from votes
+  userVote?: 'upvote' | 'downvote' | null;
+  commentCount?: number; 
   created_at: string;
   users?: {
     full_name: string;
@@ -25,81 +33,382 @@ interface Post {
   };
 }
 
+
+
+// TypeScript interface for comments
+interface Comment {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  parent_id?: string | null; // Add this for replies
+  users?: {
+    full_name: string;
+    email: string;
+    username: string;
+  };
+  replies?: Comment[]; // Add this to hold nested replies
+}
+
+// TypeScript interface for location search results from OpenStreetMap API
+interface LocationResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
+
 const Dashboard = () => {
+
+  // ========== STATE MANAGEMENT ==========
+  // User authentication and profile data
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  // Posts-related state
   const [posts, setPosts] = useState<Post[]>([]);
   const [postContent, setPostContent] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [posting, setPosting] = useState(false);
+  // Modal visibility controls
   const [showPostModal, setShowPostModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showMoodModal, setShowMoodModal] = useState(false);
+  // Media handling
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [selectedMediaType, setSelectedMediaType] = useState<'image' | 'video' | null>(null);
+  // Post editing and menu controls
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  // Location search functionality
+  const [locationSearch, setLocationSearch] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationResult[]>([]);
+  const locationSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mood selection
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
-  useEffect(() => {
-    checkUser();
+  // Comment-related state
+const [showComments, setShowComments] = useState<string | null>(null);
+const [comments, setComments] = useState<{ [postId: string]: Comment[] }>({});
+const [commentContent, setCommentContent] = useState("");
+const [postingComment, setPostingComment] = useState(false);
+const [replyingTo, setReplyingTo] = useState<string | null>(null); // Which comment is being replied to
+const [replyContent, setReplyContent] = useState(""); // Reply text content
+const [showReplies, setShowReplies] = useState<{ [commentId: string]: boolean }>({}); // Add this line
+
+// Share modal state
+const [showShareModal, setShowShareModal] = useState<string | null>(null); // Which post's share modal is showing
+const [copySuccess, setCopySuccess] = useState(false);
+
+const [showFileReport, setShowFileReport] = useState(false);
+const [showMyReports, setShowMyReports] = useState(false); // Add this
+
+
+
+
+    // ========== LIFECYCLE HOOKS ==========
+  // Run once when component mounts
+ useEffect(() => {
+  checkUser();
+}, []);
+
+useEffect(() => {
+  if (user) {
     fetchPosts();
-  }, []);
+  }
+}, [user]);
 
+
+
+  // ========== USER AUTHENTICATION ==========
+  // Check current authenticated user and fetch their profile data
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    console.log("🔍 Currently logged in user:", user?.id);
-    console.log("📧 Email:", user?.email);
     setUser(user);
     
     if (user) {
-      // Fetch user data from users table
       const { data: userData } = await supabase
         .from("users")
         .select("*")
         .eq("id", user.id)
         .single();
-      console.log("👤 User data from users table:", userData);
       setUserData(userData);
     }
     
     setLoading(false);
   };
 
-  const fetchPosts = async () => {
-    // First get posts
-    const { data: postsData, error: postsError } = await supabase
-      .from("posts")
-      .select("*")
-      .order("created_at", { ascending: false });
+ // ========== POST FETCHING ==========
+  // Fetch all posts from database and join with user information
+const fetchPosts = async () => {
+  const { data: postsData, error: postsError } = await supabase
+    .from("posts")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-    if (postsError) {
-      console.error("Error fetching posts:", postsError);
+  if (postsError) {
+    console.error("Error fetching posts:", postsError);
+    return;
+  }
+
+  // Get all votes for all posts in one query
+  const postIds = postsData?.map(p => p.id) || [];
+  const { data: allVotes } = await supabase
+    .from("votes")
+    .select("post_id, vote_type, user_id")
+    .in("post_id", postIds);
+
+  // For each post, calculate votes and check user vote
+  const postsWithUsers = await Promise.all(
+    (postsData || []).map(async (post) => {
+      const { data: userData } = await supabase
+        .from("users")
+        .select("full_name, email, username")
+        .eq("id", post.user_id)
+        .maybeSingle();
+      
+      // Filter votes for this specific post
+      const postVotes = allVotes?.filter(v => v.post_id === post.id) || [];
+      
+      // Count upvotes and downvotes
+      const upvotes = postVotes.filter(v => v.vote_type === 'upvote').length;
+      const downvotes = postVotes.filter(v => v.vote_type === 'downvote').length;
+      
+      // Check if current user voted
+      const userVote = user 
+        ? postVotes.find(v => v.user_id === user.id)?.vote_type || null
+        : null;
+      
+        // Get comment count
+      const { count: commentCount } = await supabase
+        .from("comments")
+        .select("*", { count: 'exact', head: true })
+        .eq("post_id", post.id);
+
+
+      return {
+        ...post,
+        users: userData || null,
+        upvotes,
+        downvotes,
+        userVote,
+        commentCount: commentCount || 0,
+      };
+    })
+  );
+
+  // Sort posts by upvotes (highest first), then by created_at
+  const sortedPosts = postsWithUsers.sort((a, b) => {
+    const upvotesA = a.upvotes || 0;
+    const upvotesB = b.upvotes || 0;
+    
+    if (upvotesB !== upvotesA) {
+      return upvotesB - upvotesA; // Sort by upvotes descending
+    }
+    
+    // If upvotes are equal, sort by date (newest first)
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+  setPosts(postsWithUsers);
+};
+
+ // ========== IMAGE/VIDEO UPLOAD HANDLING ==========
+  // Handle file selection and upload to Supabase storage
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+
+    if (!isImage && !isVideo) {
+      alert("Please select an image or video file");
       return;
     }
 
-    // Then get user data for each post
-    const postsWithUsers = await Promise.all(
-      (postsData || []).map(async (post) => {
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("full_name, email, username")
-          .eq("id", post.user_id)
-          .maybeSingle(); // Use maybeSingle instead of single
-        
-        if (userError) {
-          console.error("Error fetching user data:", userError);
-        }
-        
-        console.log("User data for post:", userData); // Debug log
-        
-        return {
-          ...post,
-          users: userData || null
-        };
-      })
-    );
+    const maxSize = isVideo ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert(`File size should be less than ${isVideo ? '50MB' : '5MB'}`);
+      return;
+    }
 
-    setPosts(postsWithUsers);
+    setUploadingImage(true);
+
+    try {
+      if (editingPost && editingPost.image_url && editingPost.image_url.includes('post-images')) {
+        const oldMediaPath = editingPost.image_url.split('post-images/')[1];
+        await supabase.storage.from('post-images').remove([oldMediaPath]);
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+        setSelectedMediaType(isVideo ? 'video' : 'image');
+      };
+      reader.readAsDataURL(file);
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `posts/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('post-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('post-images')
+        .getPublicUrl(filePath);
+
+      setSelectedImage(publicUrl);
+      setSelectedMediaType(isVideo ? 'video' : 'image');
+    } catch (error: any) {
+      console.error("Error uploading file:", error);
+      alert("Failed to upload file: " + error.message);
+      setSelectedImage(null);
+      setSelectedMediaType(null);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setSelectedMediaType(null);
+  };
+
+
+// ========== POST DELETION ==========
+  // Delete a post and its associated media from storage
+  const handleDeletePost = async (postId: string, imageUrl: string | null) => {
+    if (!confirm("Are you sure you want to delete this post?")) return;
+
+    try {
+      if (imageUrl) {
+        try {
+          let filePath = '';
+          
+          if (imageUrl.includes('/storage/v1/object/public/post-images/')) {
+            filePath = imageUrl.split('/storage/v1/object/public/post-images/')[1];
+          } else if (imageUrl.includes('post-images/')) {
+            const parts = imageUrl.split('post-images/');
+            filePath = parts[parts.length - 1];
+          }
+          
+          filePath = decodeURIComponent(filePath);
+          
+          if (filePath) {
+            await supabase.storage.from('post-images').remove([filePath]);
+          }
+        } catch (storageError) {
+          console.error("Error deleting media from storage:", storageError);
+        }
+      }
+
+      const { error } = await supabase.from("posts").delete().eq("id", postId);
+      if (error) throw error;
+
+      setPosts(posts.filter(post => post.id !== postId));
+      setOpenMenuId(null);
+      alert("Post deleted successfully!");
+    } catch (error: any) {
+      console.error("Error deleting post:", error);
+      alert("Failed to delete post: " + error.message);
+    }
+  };
+
+  // ========== POST EDITING ==========
+  // Load post data into the edit form
+  const handleEditPost = (post: Post) => {
+    setEditingPost(post);
+    setPostContent(post.content);
+    setSelectedImage(post.image_url);
+    if (post.image_url) {
+      const isVideo = post.image_url.match(/\.(mp4|webm|ogg|mov)$/i);
+      setSelectedMediaType(isVideo ? 'video' : 'image');
+    }
+    setIsAnonymous(post.is_anonymous);
+    setSelectedLocation(post.location);
+    setSelectedMood(post.mood);
+    setShowPostModal(true);
+    setOpenMenuId(null);
+  };
+
+  // Update existing post in database
+  const handleUpdatePost = async () => {
+    if (!editingPost) return;
+    if (!postContent.trim() && !selectedImage) {
+      alert("Post cannot be empty!");
+      return;
+    }
+
+    setPosting(true);
+
+    try {
+      if (editingPost.image_url && !selectedImage && editingPost.image_url.includes('post-images')) {
+        const oldImagePath = editingPost.image_url.split('post-images/')[1];
+        await supabase.storage.from('post-images').remove([oldImagePath]);
+      }
+
+      const { data, error } = await supabase
+        .from("posts")
+        .update({
+          content: postContent,
+          image_url: selectedImage,
+          is_anonymous: isAnonymous,
+          location: selectedLocation,
+          mood: selectedMood,
+        })
+        .eq("id", editingPost.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("full_name, email, username")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setPosts(posts.map(p => 
+      p.id === editingPost.id 
+        ? { 
+            ...data, 
+            users: userData || null,
+            upvotes: editingPost.upvotes,      // Keep existing upvotes
+            downvotes: editingPost.downvotes,  // Keep existing downvotes
+            userVote: editingPost.userVote,     // Keep existing userVote
+            commentCount: editingPost.commentCount // Keep existing commentCount
+          } 
+        : p
+    ));
+      
+      setPostContent("");
+      setIsAnonymous(false);
+      setSelectedImage(null);
+      setSelectedMediaType(null);
+      setSelectedLocation(null);
+      setSelectedMood(null);
+      setEditingPost(null);
+      setShowPostModal(false);
+    } catch (error: any) {
+      console.error("Error updating post:", error);
+      alert("Failed to update post: " + error.message);
+    } finally {
+      setPosting(false);
+    }
+  };
+
+// ========== POST CREATION ==========
+  // Create new post in database
   const handleCreatePost = async () => {
-    if (!postContent.trim()) {
-      alert("Please write something before posting!");
+    if (!postContent.trim() && !selectedImage) {
+      alert("Please write something or add media before posting!");
       return;
     }
 
@@ -108,38 +417,33 @@ const Dashboard = () => {
     try {
       const { data, error } = await supabase
         .from("posts")
-        .insert([
-          {
-            user_id: user.id,
-            content: postContent,
-            image_url: null,
-            location: null,
-            mood: null,
-            is_anonymous: isAnonymous,
-          },
-        ])
+        .insert([{
+          user_id: user.id,
+          content: postContent,
+          image_url: selectedImage,
+          location: selectedLocation,
+          mood: selectedMood,
+          is_anonymous: isAnonymous,
+        }])
         .select()
         .single();
 
       if (error) throw error;
 
-      // Get user data for the new post
-      const { data: userData, error: userError } = await supabase
+      const { data: userData } = await supabase
         .from("users")
         .select("full_name, email, username")
         .eq("id", user.id)
         .maybeSingle();
 
-      if (userError) {
-        console.error("Error fetching user data:", userError);
-      }
-
-      // Add new post to the top of the list with user data
       setPosts([{ ...data, users: userData }, ...posts]);
       setPostContent("");
-      setIsAnonymous(false); // Reset to default
+      setIsAnonymous(false);
+      setSelectedImage(null);
+      setSelectedMediaType(null);
+      setSelectedLocation(null);
+      setSelectedMood(null);
       setShowPostModal(false);
-      
     } catch (error: any) {
       console.error("Error creating post:", error);
       alert("Failed to create post: " + error.message);
@@ -148,6 +452,9 @@ const Dashboard = () => {
     }
   };
 
+
+  // ========== USER LOGOUT ==========
+  // Sign out user and clear all stored data
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.clear();
@@ -155,38 +462,554 @@ const Dashboard = () => {
     window.location.href = "/";
   };
 
+  // ========== VOTING SYSTEM ==========
+// Handle upvote/downvote on a post
+const handleVote = async (postId: string, voteType: 'upvote' | 'downvote') => {
+  if (!user) {
+    alert("Please log in to vote");
+    return;
+  }
+
+  try {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    // Check if user already voted
+    const { data: existingVote } = await supabase
+      .from("votes")
+      .select("*")
+      .eq("post_id", postId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    let newUpvotes = post.upvotes || 0;
+    let newDownvotes = post.downvotes || 0;
+    let newUserVote: 'upvote' | 'downvote' | null = voteType;
+
+    if (existingVote) {
+      // User already voted
+      if (existingVote.vote_type === voteType) {
+        // Clicking same vote - remove vote
+        await supabase
+          .from("votes")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", user.id);
+
+        if (voteType === 'upvote') {
+          newUpvotes--;
+        } else {
+          newDownvotes--;
+        }
+        newUserVote = null;
+      } else {
+        // Switching vote type
+        await supabase
+          .from("votes")
+          .update({ vote_type: voteType })
+          .eq("post_id", postId)
+          .eq("user_id", user.id);
+
+        if (voteType === 'upvote') {
+          newUpvotes++;
+          newDownvotes--;
+        } else {
+          newDownvotes++;
+          newUpvotes--;
+        }
+      }
+    } else {
+      // New vote
+      await supabase
+        .from("votes")
+        .insert([{
+          post_id: postId,
+          user_id: user.id,
+          vote_type: voteType
+        }]);
+
+      if (voteType === 'upvote') {
+        newUpvotes++;
+      } else {
+        newDownvotes++;
+      }
+    }
+
+   // Update local state immediately and re-sort
+    const updatedPosts = posts.map(p => 
+      p.id === postId 
+        ? { ...p, upvotes: newUpvotes, downvotes: newDownvotes, userVote: newUserVote }
+        : p
+    );
+
+    // Sort posts by upvotes (highest first), then by created_at
+    const sortedPosts = updatedPosts.sort((a, b) => {
+      const upvotesA = a.upvotes || 0;
+      const upvotesB = b.upvotes || 0;
+      
+      if (upvotesB !== upvotesA) {
+        return upvotesB - upvotesA; // Sort by upvotes descending
+      }
+      
+      // If upvotes are equal, sort by date (newest first)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    setPosts(sortedPosts);
+
+  } catch (error: any) {
+    console.error("Error voting:", error);
+    alert("Failed to vote: " + error.message);
+    // Refresh on error to get correct state
+    await fetchPosts();
+  }
+};
+
+// ========== COMMENT SYSTEM ==========
+// Fetch comments for a specific post
+const fetchComments = async (postId: string) => {
+  const { data: commentsData, error } = await supabase
+    .from("comments")
+    .select("*")
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching comments:", error);
+    return;
+  }
+
+  // Fetch user data for each comment
+  const commentsWithUsers = await Promise.all(
+    (commentsData || []).map(async (comment) => {
+      const { data: userData } = await supabase
+        .from("users")
+        .select("full_name, email, username")
+        .eq("id", comment.user_id)
+        .maybeSingle();
+      
+      return {
+        ...comment,
+        users: userData || null
+      };
+    })
+  );
+
+  // Organize comments into parent comments and replies
+  const parentComments = commentsWithUsers.filter(c => !c.parent_id);
+  const repliesMap: { [key: string]: Comment[] } = {};
+  
+  commentsWithUsers.forEach(comment => {
+    if (comment.parent_id) {
+      if (!repliesMap[comment.parent_id]) {
+        repliesMap[comment.parent_id] = [];
+      }
+      repliesMap[comment.parent_id].push(comment);
+    }
+  });
+
+  // Attach replies to their parent comments
+  const organizedComments = parentComments.map(comment => ({
+    ...comment,
+    replies: repliesMap[comment.id] || []
+  }));
+
+  setComments(prev => ({
+    ...prev,
+    [postId]: organizedComments
+  }));
+};
+
+// Toggle comment section visibility
+const handleToggleComments = async (postId: string) => {
+  if (showComments === postId) {
+    setShowComments(null);
+  } else {
+    setShowComments(postId);
+    if (!comments[postId]) {
+      await fetchComments(postId);
+    }
+  }
+};
+
+// Post a new comment
+const handlePostComment = async (postId: string) => {
+  if (!user) {
+    alert("Please log in to comment");
+    return;
+  }
+
+  if (!commentContent.trim()) {
+    alert("Comment cannot be empty");
+    return;
+  }
+
+  setPostingComment(true);
+
+  try {
+    const { data, error } = await supabase
+      .from("comments")
+      .insert([{
+        post_id: postId,
+        user_id: user.id,
+        content: commentContent
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const { data: userData } = await supabase
+      .from("users")
+      .select("full_name, email, username")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    // Add new comment to local state
+    setComments(prev => ({
+      ...prev,
+      [postId]: [...(prev[postId] || []), { ...data, users: userData }]
+    }));
+
+    // Update comment count
+    setPosts(posts.map(p => 
+      p.id === postId 
+        ? { ...p, commentCount: (p.commentCount || 0) + 1 }
+        : p
+    ));
+
+    setCommentContent("");
+  } catch (error: any) {
+    console.error("Error posting comment:", error);
+    alert("Failed to post comment: " + error.message);
+  } finally {
+    setPostingComment(false);
+  }
+};
+
+
+// Post a reply to a comment
+const handlePostReply = async (postId: string, parentCommentId: string) => {
+  if (!user) {
+    alert("Please log in to reply");
+    return;
+  }
+
+  if (!replyContent.trim()) {
+    alert("Reply cannot be empty");
+    return;
+  }
+
+  setPostingComment(true);
+
+  try {
+    const { data, error } = await supabase
+      .from("comments")
+      .insert([{
+        post_id: postId,
+        user_id: user.id,
+        content: replyContent,
+        parent_id: parentCommentId
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const { data: userData } = await supabase
+      .from("users")
+      .select("full_name, email, username")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const newReply = { ...data, users: userData };
+
+    // Add reply to the parent comment in local state
+    setComments(prev => {
+      const postComments = prev[postId] || [];
+      return {
+        ...prev,
+        [postId]: postComments.map(comment => 
+          comment.id === parentCommentId
+            ? { ...comment, replies: [...(comment.replies || []), newReply] }
+            : comment
+        )
+      };
+    });
+
+    // Update comment count (replies count as comments too)
+    setPosts(posts.map(p => 
+      p.id === postId 
+        ? { ...p, commentCount: (p.commentCount || 0) + 1 }
+        : p
+    ));
+
+    // Auto-show replies when posting a new reply
+    setShowReplies(prev => ({
+      ...prev,
+      [parentCommentId]: true
+    }));
+
+    setReplyContent("");
+    setReplyingTo(null);
+  } catch (error: any) {
+    console.error("Error posting reply:", error);
+    alert("Failed to post reply: " + error.message);
+  } finally {
+    setPostingComment(false);
+  }
+};
+
+// Toggle reply input
+const handleToggleReply = (commentId: string) => {
+  if (replyingTo === commentId) {
+    setReplyingTo(null);
+    setReplyContent("");
+  } else {
+    setReplyingTo(commentId);
+  }
+};
+
+// Toggle replies visibility
+const handleToggleReplies = (commentId: string) => {
+  setShowReplies(prev => ({
+    ...prev,
+    [commentId]: !prev[commentId]
+  }));
+};
+
+
+// Delete a comment (and all its replies)
+const handleDeleteComment = async (postId: string, commentId: string) => {
+  if (!confirm("Are you sure you want to delete this comment? All replies will also be deleted.")) return;
+
+  try {
+    // Get all reply IDs for this comment
+    const repliesToDelete = comments[postId]?.find(c => c.id === commentId)?.replies || [];
+    const totalDeleted = 1 + repliesToDelete.length;
+
+    const { error } = await supabase
+      .from("comments")
+      .delete()
+      .eq("id", commentId);
+
+    if (error) throw error;
+
+    // Remove comment from local state
+    setComments(prev => ({
+      ...prev,
+      [postId]: (prev[postId] || []).filter(c => c.id !== commentId)
+    }));
+
+    // Update comment count
+    setPosts(posts.map(p => 
+      p.id === postId 
+        ? { ...p, commentCount: Math.max((p.commentCount || 0) - totalDeleted, 0) }
+        : p
+    ));
+
+    alert("Comment deleted successfully!");
+  } catch (error: any) {
+    console.error("Error deleting comment:", error);
+    alert("Failed to delete comment: " + error.message);
+  }
+};
+
+// Delete a reply
+const handleDeleteReply = async (postId: string, parentCommentId: string, replyId: string) => {
+  if (!confirm("Are you sure you want to delete this reply?")) return;
+
+  try {
+    const { error } = await supabase
+      .from("comments")
+      .delete()
+      .eq("id", replyId);
+
+    if (error) throw error;
+
+    // Remove reply from local state
+    setComments(prev => {
+      const postComments = prev[postId] || [];
+      return {
+        ...prev,
+        [postId]: postComments.map(comment => 
+          comment.id === parentCommentId
+            ? { ...comment, replies: (comment.replies || []).filter(r => r.id !== replyId) }
+            : comment
+        )
+      };
+    });
+
+    // Update comment count
+    setPosts(posts.map(p => 
+      p.id === postId 
+        ? { ...p, commentCount: Math.max((p.commentCount || 0) - 1, 0) }
+        : p
+    ));
+
+    alert("Reply deleted successfully!");
+  } catch (error: any) {
+    console.error("Error deleting reply:", error);
+    alert("Failed to delete reply: " + error.message);
+  }
+};
+
+
+// ========== SHARE SYSTEM ==========
+// Generate shareable link for a post
+const getPostLink = (postId: string) => {
+  return `${window.location.origin}/post/${postId}`;
+};
+
+// Copy link to clipboard
+const handleCopyLink = async (postId: string) => {
+  try {
+    await navigator.clipboard.writeText(getPostLink(postId));
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+  } catch (error) {
+    console.error("Failed to copy:", error);
+    alert("Failed to copy link");
+  }
+};
+
+// Share to social media
+const handleShareToSocial = (platform: string, postId: string, postContent: string) => {
+  const url = getPostLink(postId);
+  const text = postContent.slice(0, 100) + (postContent.length > 100 ? '...' : '');
+  
+  let shareUrl = '';
+  
+  switch(platform) {
+    case 'facebook':
+      shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+      break;
+    case 'telegram':
+      shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+      break;
+    case 'messenger':
+      shareUrl = `fb-messenger://share/?link=${encodeURIComponent(url)}`;
+      break;
+  }
+  
+  window.open(shareUrl, '_blank', 'width=600,height=400');
+};
+
+
+// ========== TIME FORMATTING ==========
+  // Convert timestamp to human-readable "time ago" format
   const getTimeAgo = (timestamp: string) => {
     const now = new Date();
     const posted = new Date(timestamp);
     const diffInMs = now.getTime() - posted.getTime();
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return "Just now";
-    if (diffInHours < 24) return `${diffInHours} hours ago`;
+
+    const diffInSeconds = Math.floor(diffInMs / 1000);
+    if (diffInSeconds < 60) return "Just now";
+
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+
     const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays} days ago`;
+    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
   };
 
+
+  // ========== ANONYMOUS NAME GENERATION ==========
+  // Generate consistent anonymous name from post ID (e.g., "Anonymous1234")
   const getAnonymousName = (postId: string) => {
-    // Generate consistent 4-digit number from post ID
     let hash = 0;
     for (let i = 0; i < postId.length; i++) {
       hash = ((hash << 5) - hash) + postId.charCodeAt(i);
-      hash = hash & hash; // Convert to 32bit integer
+      hash = hash & hash;
     }
     const fourDigits = Math.abs(hash % 10000).toString().padStart(4, '0');
     return `Anonymous${fourDigits}`;
   };
 
+
+  // ========== MOOD OPTIONS ==========
+  // Available moods with emojis and colors
+  const moods = [
+    { emoji: "😊", label: "Happy", color: "bg-yellow-100" },
+    { emoji: "😢", label: "Sad", color: "bg-blue-100" },
+    { emoji: "😠", label: "Angry", color: "bg-red-100" },
+    { emoji: "😰", label: "Worried", color: "bg-orange-100" },
+    { emoji: "😌", label: "Grateful", color: "bg-green-100" },
+    { emoji: "😤", label: "Frustrated", color: "bg-purple-100" },
+    { emoji: "🤔", label: "Thoughtful", color: "bg-gray-100" },
+    { emoji: "😃", label: "Excited", color: "bg-pink-100" },
+  ];
+
+// ========== LOCATION SEARCH ==========
+  // Search for locations using OpenStreetMap Nominatim API with debouncing
+  const handleLocationSearch = (query: string) => {
+    setLocationSearch(query);
+
+    // Clear any previous timeout
+    if (locationSearchTimeout.current) {
+      clearTimeout(locationSearchTimeout.current);
+    }
+
+    // If query is too short, clear suggestions
+    if (query.trim().length < 3) {
+      setLocationSuggestions([]);
+      return;
+    }
+
+    // Wait 500ms after typing stops before fetching
+    locationSearchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            query
+          )}&limit=5`
+        );
+        const data = await res.json();
+        setLocationSuggestions(data);
+      } catch (error) {
+        console.error("Location search failed", error);
+      }
+    }, 500); // 500ms debounce
+  };
+  // Select a location from search results
+  const handleSelectLocation = (location: string) => {
+    setSelectedLocation(location);
+    setLocationSearch(location); // keep the selected text visible
+    setLocationSuggestions([]);  // hide only the suggestion list
+  };
+  // Select a mood and close modal
+  const handleSelectMood = (mood: string) => {
+    setSelectedMood(mood);
+    setShowMoodModal(false);
+  };
+
+
+  
+  // ========== LOADING STATE ==========
+  // Show loading indicator while checking user authentication
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
+     // Show File Report page if active
+  if (showFileReport) {
+    return <FileReport onBack={() => setShowFileReport(false)} />;
+  }
+
+  // Show My Reports page if active
+if (showMyReports) {
+  return <MyReports onBack={() => setShowFileReport(true)} onNavigateHome={() => setShowMyReports(false)} />;
+}
+  // ========== MAIN RENDER ==========
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* HEADER */}
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+
+           {/* Logo and title */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
               <Megaphone className="w-6 h-6 text-white" />
@@ -194,6 +1017,7 @@ const Dashboard = () => {
             <h1 className="text-xl font-bold">Online Sumbungan</h1>
           </div>
 
+          {/* Search bar */}
           <div className="flex-1 max-w-2xl mx-8">
             <div className="relative">
               <input
@@ -205,40 +1029,46 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* User profile and notifications */}
           <div className="flex items-center gap-4">
             <button className="relative p-2 hover:bg-gray-100 rounded-full">
               <Bell className="w-6 h-6" />
             </button>
-            <button className="relative p-2 hover:bg-gray-100 rounded-full">
-              <MessageSquare className="w-6 h-6" />
-            </button>
             <div className="flex items-center gap-2">
-              <div className="text-right">
-                <p className="text-xs text-gray-500">Resident</p>
+               <div className="w-10 h-10 bg-green-400 rounded-full"></div>
+              <div className="text-left">
                 <p className="text-sm font-semibold">{userData?.full_name || user?.email?.split('@')[0] || "User"}</p>
+                <p className="text-xs text-gray-500">{userData?.barangay}</p>
               </div>
-              <div className="w-10 h-10 bg-green-400 rounded-full"></div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
+
+      {/* ========== MAIN CONTENT ========== */}
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid grid-cols-12 gap-6">
           
-          {/* LEFT SIDEBAR */}
+          {/* ========== LEFT SIDEBAR ========== */}
           <aside className="col-span-3">
             <div className="bg-white rounded-lg shadow-sm p-4 space-y-2">
+
+              {/* Navigation menu */}
               <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 text-blue-600 font-semibold">
                 <Home className="w-5 h-5" />
                 Home Feed
               </button>
-              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700">
+
+              <button 
+                onClick={() => setShowMyReports(true)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700"
+              >
                 <FileText className="w-5 h-5" />
                 My Reports
               </button>
 
+              {/* Local services section */}
               <div className="pt-4 border-t">
                 <p className="text-xs font-semibold text-gray-500 uppercase px-4 mb-2">Local Services</p>
                 <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
@@ -250,7 +1080,7 @@ const Dashboard = () => {
                   Parks & Recreation
                 </button>
               </div>
-
+              {/* Logout button */}
               <div className="pt-4">
                 <button
                   onClick={handleLogout}
@@ -263,9 +1093,8 @@ const Dashboard = () => {
             </div>
           </aside>
 
-          {/* CENTER FEED */}
+          {/* ========== CENTER FEED ========== */}
           <main className="col-span-6">
-            {/* CREATE POST BUTTON */}
             <button
               onClick={() => setShowPostModal(true)}
               className="w-full bg-white rounded-lg shadow-sm p-4 mb-4 flex items-center gap-3 hover:bg-gray-50 transition-colors"
@@ -274,18 +1103,22 @@ const Dashboard = () => {
               <span className="text-gray-500 text-left flex-1">Share something with your neighbors...</span>
             </button>
 
-            {/* POST MODAL */}
+            {/* ========== CREATE/EDIT POST MODAL ========== */}
             {showPostModal && (
               <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  {/* Modal Header */}
                   <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
-                    <h3 className="text-xl font-bold">Create Post</h3>
+                    <h3 className="text-xl font-bold">{editingPost ? "Edit Post" : "Create Post"}</h3>
                     <button
                       onClick={() => {
                         setShowPostModal(false);
                         setPostContent("");
                         setIsAnonymous(false);
+                        setSelectedImage(null);
+                        setSelectedMediaType(null);
+                        setSelectedLocation(null);
+                        setSelectedMood(null);
+                        setEditingPost(null);
                       }}
                       className="text-gray-400 hover:text-gray-600"
                     >
@@ -295,7 +1128,7 @@ const Dashboard = () => {
                     </button>
                   </div>
 
-                  {/* Modal Body */}
+                  {/* Modal content */}
                   <div className="p-6">
                     <div className="flex gap-3 mb-4">
                       <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
@@ -305,6 +1138,7 @@ const Dashboard = () => {
                       </div>
                     </div>
 
+                    {/* Post content textarea */}
                     <textarea
                       value={postContent}
                       onChange={(e) => setPostContent(e.target.value)}
@@ -313,26 +1147,105 @@ const Dashboard = () => {
                       autoFocus
                     />
 
-                    {/* Options */}
+                    {/* Media preview (image or video) */}
+                    {selectedImage && (
+                      <div className="relative mt-4">
+                        {selectedMediaType === 'video' ? (
+                          <video
+                            src={selectedImage}
+                            controls
+                            className="w-full rounded-lg max-h-96"
+                          >
+                            Your browser does not support the video tag.
+                          </video>
+                        ) : (
+                          <img
+                            src={selectedImage}
+                            alt="Preview"
+                            className="w-full rounded-lg max-h-96 object-cover"
+                          />
+                        )}
+                        <button
+                          onClick={handleRemoveImage}
+                          className="absolute top-2 right-2 bg-gray-900 bg-opacity-75 text-white rounded-full p-2 hover:bg-opacity-90"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+
+                    {uploadingImage && (
+                      <div className="mt-4 p-4 bg-blue-50 rounded-lg flex items-center gap-3">
+                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-sm text-blue-600">Uploading {selectedMediaType === 'video' ? 'video' : 'image'}...</span>
+                      </div>
+                    )}
+
                     <div className="mt-4 p-4 border rounded-lg">
                       <p className="text-sm font-semibold text-gray-700 mb-3">Add to your post</p>
-                      <div className="flex gap-2">
-                        <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600">
+                      <div className="flex gap-2 flex-wrap">
+                        <label className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 cursor-pointer">
                           <Image className="w-5 h-5 text-green-600" />
                           <span className="text-sm font-medium">Photo/Video</span>
-                        </button>
-                        <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600">
+                          <input
+                            type="file"
+                            accept="image/*,video/*"
+                            onChange={handleImageSelect}
+                            className="hidden"
+                            disabled={uploadingImage}
+                          />
+                        </label>
+
+                        <button 
+                          onClick={() => setShowLocationModal(true)}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                        >
                           <MapPin className="w-5 h-5 text-red-600" />
                           <span className="text-sm font-medium">Location</span>
                         </button>
-                        <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600">
+
+                        <button 
+                          onClick={() => setShowMoodModal(true)}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                        >
                           <Smile className="w-5 h-5 text-yellow-600" />
                           <span className="text-sm font-medium">Mood</span>
                         </button>
                       </div>
+
+                      {selectedLocation && (
+                        <div className="mt-3 flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
+                          <MapPin className="w-4 h-4 text-red-600" />
+                          <span className="text-sm text-gray-700">{selectedLocation}</span>
+                          <button
+                            onClick={() => setSelectedLocation(null)}
+                            className="ml-auto text-gray-400 hover:text-gray-600"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+
+                      {selectedMood && (
+                        <div className="mt-3 flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
+                          <span className="text-lg">{moods.find(m => m.label === selectedMood)?.emoji}</span>
+                          <span className="text-sm text-gray-700">Feeling {selectedMood}</span>
+                          <button
+                            onClick={() => setSelectedMood(null)}
+                            className="ml-auto text-gray-400 hover:text-gray-600"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Anonymous Option */}
                     <label className="flex items-center gap-2 mt-4 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
                       <input
                         type="checkbox"
@@ -344,22 +1257,21 @@ const Dashboard = () => {
                     </label>
                   </div>
 
-                  {/* Modal Footer */}
                   <div className="p-4 border-t bg-gray-50">
                     <button
-                      onClick={handleCreatePost}
-                      disabled={posting || !postContent.trim()}
+                      onClick={editingPost ? handleUpdatePost : handleCreatePost}
+                      disabled={posting || (!postContent.trim() && !selectedImage) || uploadingImage}
                       className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {posting ? (
                         <>
                           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Posting...
+                          {editingPost ? "Updating..." : "Posting..."}
                         </>
                       ) : (
                         <>
                           <Send className="w-5 h-5" />
-                          Post
+                          {editingPost ? "Update" : "Post"}
                         </>
                       )}
                     </button>
@@ -368,7 +1280,96 @@ const Dashboard = () => {
               </div>
             )}
 
-            {/* FILE REPORT CTA */}
+            {/* ========== LOCATION MODAL ========== */}
+            {showLocationModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
+                    <h3 className="text-xl font-bold">Add Location</h3>
+                    <button
+                      onClick={() => {
+                        setShowLocationModal(false);
+                        setLocationSearch("");
+                        setLocationSuggestions([]);
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="p-6">
+                    <div className="relative mb-4">
+                      <input
+                        type="text"
+                        value={locationSearch}
+                        onChange={(e) => handleLocationSearch(e.target.value)}
+                        placeholder="Search any city, barangay, or street..."
+                        className="w-full bg-gray-50 rounded-lg px-4 py-3 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                      <Search className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
+                    </div>
+
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {locationSuggestions.map((loc) => (
+                        <button
+                          key={`${loc.lat}-${loc.lon}`}
+                          onClick={() => handleSelectLocation(loc.display_name)}
+                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-left"
+                        >
+                          <MapPin className="w-5 h-5 text-red-600" />
+                          <span className="text-gray-900">{loc.display_name}</span>
+                        </button>
+                      ))}
+                      
+                      {locationSearch && locationSuggestions.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          <MapPin className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                          <p>No locations found</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========== MOOD MODAL ========== */}
+            {showMoodModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+                  <div className="flex items-center justify-between p-4 border-b">
+                    <h3 className="text-xl font-bold">How are you feeling?</h3>
+                    <button
+                      onClick={() => setShowMoodModal(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="p-6 grid grid-cols-2 gap-3">
+                    {moods.map((mood) => (
+                      <button
+                        key={mood.label}
+                        onClick={() => handleSelectMood(mood.label)}
+                        className={`${mood.color} p-4 rounded-lg hover:opacity-80 transition-opacity flex items-center gap-3`}
+                      >
+                        <span className="text-3xl">{mood.emoji}</span>
+                        <span className="font-medium text-gray-800">{mood.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========== CALL-TO-ACTION BANNER ========== */}
             <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4 mb-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
@@ -379,83 +1380,458 @@ const Dashboard = () => {
                   <p className="text-sm text-gray-600">Help your community by reporting it now.</p>
                 </div>
               </div>
-              <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2">
+
+              <button 
+                onClick={() => setShowFileReport(true)}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2"
+              >
                 <Plus className="w-5 h-5" />
                 File a New Report
               </button>
+              
             </div>
 
-            {/* POSTS FEED */}
-            {posts.length === 0 ? (
-              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">No posts yet</h3>
-                <p className="text-gray-500">Be the first to share something with your community!</p>
-              </div>
-            ) : (
-              posts.map((post) => (
-                <div key={post.id} className="bg-white rounded-lg shadow-sm p-6 mb-4">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex gap-3">
-                      <div className={`w-12 h-12 ${post.is_anonymous ? 'bg-gray-400' : 'bg-orange-300'} rounded-full`}></div>
-                      <div>
-                        <h3 className="font-semibold">
+            {/* ========== POSTS FEED ========== */}
+          {posts.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+              <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">No posts yet</h3>
+              <p className="text-gray-500">Be the first to share something with your community!</p>
+            </div>
+          ) : (
+            posts.map((post) => (
+              <div key={post.id} className="bg-white rounded-lg shadow-sm p-6 mb-4">
+                <div className="flex gap-4">
+                  {/* ========== VOTING SECTION (LEFT SIDE) ========== */}
+                  <div className="flex flex-col items-center gap-1">
+                    <button
+                      onClick={() => handleVote(post.id, 'upvote')}
+                      className={`p-1 rounded hover:bg-gray-100 transition-colors ${
+                        post.userVote === 'upvote' ? 'text-blue-600' : 'text-gray-400'
+                      }`}
+                    >
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 4l-8 8h5v8h6v-8h5z" />
+                      </svg>
+                    </button>
+                    <span className="text-sm font-semibold text-gray-700">
+                          {post.upvotes ?? 0}
+                    </span>
+                    <button
+                      onClick={() => handleVote(post.id, 'downvote')}
+                      className={`p-1 rounded hover:bg-gray-100 transition-colors ${
+                        post.userVote === 'downvote' ? 'text-red-600' : 'text-gray-400'
+                      }`}
+                    >
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 20l8-8h-5V4H9v8H4z" />
+                      </svg>
+                    </button>
+                  </div>
+
+              {/* ========== POST CONTENT ========== */}
+              <div className="flex-1">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start gap-3 w-full">
+                    {/* Avatar */}
+                    <div className={`flex-shrink-0 w-12 h-12 rounded-full ${post.is_anonymous ? 'bg-gray-400' : 'bg-orange-300'} flex items-center justify-center text-white font-bold text-lg`}>
+                      {post.is_anonymous ? getAnonymousName(post.id).slice(0, 2) : (post.users?.full_name?.slice(0, 2) || "U")}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex flex-col min-w-0">
+                      {/* Row 1: Full Name + Mood */}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <h3 className="font-semibold text-gray-900 truncate max-w-xs">
                           {post.is_anonymous 
                             ? getAnonymousName(post.id)
                             : (post.users?.full_name || post.users?.username || post.users?.email?.split('@')[0] || "User")
                           }
                         </h3>
-                        <p className="text-sm text-gray-500">{getTimeAgo(post.created_at)} • Public</p>
+
+                        {post.mood && (
+                          <span className="flex items-center gap-1 text-xs text-gray-600">
+                            {moods.find(m => m.label === post.mood)?.emoji} Feeling {post.mood}
+                          </span>
+                        )}
                       </div>
+
+                      {/* Row 2: Time + Public */}
+                      <span className="text-xs text-gray-500 mt-1">
+                        {getTimeAgo(post.created_at)} • Public
+                      </span>
+
+                      {/* Row 3: Location */}
+                      {post.location && (
+                        <span className="flex items-center gap-1 text-xs text-gray-600 mt-1 truncate max-w-xs">
+                          <MapPin className="w-3 h-3 text-red-500" />
+                          {post.location}
+                        </span>
+                      )}
                     </div>
-                    <button className="text-gray-400 hover:text-gray-600">
-                      <MoreVertical className="w-6 h-6" />
-                    </button>
                   </div>
 
-                  <p className="text-gray-800 mb-4 whitespace-pre-wrap">{post.content}</p>
-
-                  {post.image_url && (
-                    <img
-                      src={post.image_url}
-                      alt="Post"
-                      className="w-full rounded-lg mb-4"
-                    />
-                  )}
-
-                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-4 pb-4 border-b">
-                    <span className="flex items-center gap-1">
-                      <ThumbsUp className="w-4 h-4 fill-blue-500 text-blue-500" />
-                      {post.upvotes} upvotes
-                    </span>
-                    <span>• {post.downvotes} downvotes</span>
-                    <span className="ml-auto">0 comments</span>
-                    <span>0 shares</span>
+            {/* Edit/Delete Menu */}
+            {user?.id === post.user_id && (
+              <div className="relative">
+                <button 
+                  onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
+                  className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100"
+                >
+                  <MoreVertical className="w-6 h-6" />
+                </button>
+                
+                {openMenuId === post.id && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-10">
+                    <button
+                      onClick={() => handleEditPost(post)}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left"
+                    >
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      <span className="font-medium">Edit post</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeletePost(post.id, post.image_url)}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 text-left rounded-b-lg"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span className="font-medium">Delete post</span>
+                    </button>
                   </div>
+                )}
+              </div>
+            )}
+          </div>
 
-                  <div className="flex items-center gap-2">
-                    <button className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-gray-50">
-                      <ThumbsUp className="w-5 h-5" />
-                      <span className="font-semibold">{post.upvotes - post.downvotes}</span>
-                      <ThumbsDown className="w-5 h-5" />
-                    </button>
-                    <button className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-gray-50">
-                      <MessageSquare className="w-5 h-5" />
-                      Comment
-                    </button>
-                    <button className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-gray-50">
-                      <Share2 className="w-5 h-5" />
-                      Share
+          {/* Post Text Content */}
+          <p className="text-gray-800 mb-4 whitespace-pre-wrap">{post.content}</p>
+
+          {/* Post Media */}
+          {post.image_url && (
+            <>
+              {post.image_url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                <video
+                  src={post.image_url}
+                  controls
+                  className="w-full rounded-lg mb-4 max-h-96"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img
+                  src={post.image_url}
+                  alt="Post"
+                  className="w-full rounded-lg mb-4"
+                />
+              )}
+            </>
+          )}
+
+          {/* ========== POST ACTIONS (COMMENT & SHARE ONLY) ========== */}
+          <div className="flex items-center gap-2 pt-4 border-t">
+
+             <button 
+              onClick={() => handleToggleComments(post.id)}
+              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-gray-50"
+            >
+              <MessageSquare className="w-5 h-5" />
+              Comment {post.commentCount ? `(${post.commentCount})` : ''}
+            </button>
+
+            <button 
+                onClick={() => setShowShareModal(post.id)}
+                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-gray-50"
+              >
+                <Share2 className="w-5 h-5" />
+                Share
+              </button>
+
+          </div>
+        </div>
+      </div>
+
+         {/* ========== COMMENTS SECTION ========== */}
+          {showComments === post.id && (
+            <div className="mt-4 pt-4 border-t">
+              {/* Comment Input */}
+              <div className="flex gap-3 mb-4">
+                <div className="w-8 h-8 bg-green-400 rounded-full flex-shrink-0"></div>
+                <div className="flex-1">
+                  <textarea
+                    value={commentContent}
+                    onChange={(e) => setCommentContent(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="w-full bg-gray-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={2}
+                  />
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={() => handlePostComment(post.id)}
+                      disabled={postingComment || !commentContent.trim()}
+                      className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      {postingComment ? "Posting..." : "Post"}
                     </button>
                   </div>
                 </div>
-              ))
-            )}
+              </div>
+
+              {/* Comments List */}
+              <div className="space-y-4">
+                {comments[post.id]?.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No comments yet. Be the first to comment!</p>
+                ) : (
+                  comments[post.id]?.map((comment) => (
+                    <div key={comment.id} className="space-y-2">
+                      {/* Main Comment */}
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 bg-purple-300 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
+                          {comment.users?.full_name?.slice(0, 2) || "U"}
+                        </div>
+                        <div className="flex-1">
+                          <div className="bg-gray-100 rounded-lg px-3 py-2">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-semibold text-sm">
+                                {comment.users?.full_name || comment.users?.username || "User"}
+                              </h4>
+                              {user?.id === comment.user_id && (
+                                <button
+                                  onClick={() => handleDeleteComment(post.id, comment.id)}
+                                  className="text-red-500 hover:text-red-700 text-xs"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-800 mt-1">{comment.content}</p>
+                          </div>
+                          <div className="flex items-center gap-4 ml-3 mt-1">
+                            <span className="text-xs text-gray-500">
+                              {getTimeAgo(comment.created_at)}
+                            </span>
+                            <button
+                              onClick={() => handleToggleReply(comment.id)}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
+                            >
+                              Reply
+                            </button>
+                            {/* Show/Hide Replies Button - only if there are replies */}
+                            {comment.replies && comment.replies.length > 0 && (
+                              <button
+                                onClick={() => handleToggleReplies(comment.id)}
+                                className="text-xs text-gray-600 hover:text-gray-800 font-semibold flex items-center gap-1"
+                              >
+                                {showReplies[comment.id] ? (
+                                  <>
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                    Hide {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                    Show {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Reply Input */}
+                          {replyingTo === comment.id && (
+                            <div className="flex gap-2 mt-3">
+                              <div className="w-6 h-6 bg-green-400 rounded-full flex-shrink-0"></div>
+                              <div className="flex-1">
+                                <textarea
+                                  value={replyContent}
+                                  onChange={(e) => setReplyContent(e.target.value)}
+                                  placeholder="Write a reply..."
+                                  className="w-full bg-gray-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                  rows={2}
+                                  autoFocus
+                                />
+                                <div className="flex justify-end gap-2 mt-2">
+                                  <button
+                                    onClick={() => {
+                                      setReplyingTo(null);
+                                      setReplyContent("");
+                                    }}
+                                    className="text-gray-600 px-3 py-1 rounded-lg text-sm hover:bg-gray-100"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={() => handlePostReply(post.id, comment.id)}
+                                    disabled={postingComment || !replyContent.trim()}
+                                    className="bg-blue-600 text-white px-4 py-1 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                  >
+                                    {postingComment ? "Posting..." : "Reply"}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Replies - Only show if showReplies[comment.id] is true */}
+                      {comment.replies && comment.replies.length > 0 && showReplies[comment.id] && (
+                        <div className="ml-11 space-y-2">
+                          {comment.replies.map((reply) => (
+                            <div key={reply.id} className="flex gap-3">
+                              <div className="w-7 h-7 bg-indigo-300 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
+                                {reply.users?.full_name?.slice(0, 2) || "U"}
+                              </div>
+                              <div className="flex-1">
+                                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-semibold text-sm">
+                                      {reply.users?.full_name || reply.users?.username || "User"}
+                                    </h4>
+                                    {user?.id === reply.user_id && (
+                                      <button
+                                        onClick={() => handleDeleteReply(post.id, comment.id, reply.id)}
+                                        className="text-red-500 hover:text-red-700 text-xs"
+                                      >
+                                        Delete
+                                      </button>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-800 mt-1">{reply.content}</p>
+                                </div>
+                                <span className="text-xs text-gray-500 ml-3 mt-1">
+                                  {getTimeAgo(reply.created_at)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+
+          {/* ========== SHARE MODAL ========== */}
+          {showShareModal === post.id && (
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+              onClick={() => setShowShareModal(null)}
+            >
+              <div 
+                className="bg-white rounded-xl shadow-xl max-w-md w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h3 className="text-lg font-bold">Share Post</h3>
+                  <button
+                    onClick={() => setShowShareModal(null)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="p-6">
+                  {/* Social Media Share Buttons */}
+                  <p className="text-sm font-semibold text-gray-700 mb-3">Share to social media</p>
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    {/* Facebook */}
+                    <button
+                      onClick={() => handleShareToSocial('facebook', post.id, post.content)}
+                      className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
+                      </div>
+                      <span className="text-xs font-medium">Facebook</span>
+                    </button>
+
+                    {/* Telegram */}
+                    <button
+                      onClick={() => handleShareToSocial('telegram', post.id, post.content)}
+                      className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                        </svg>
+                      </div>
+                      <span className="text-xs font-medium">Telegram</span>
+                    </button>
+
+                    {/* Messenger */}
+                    <button
+                      onClick={() => handleShareToSocial('messenger', post.id, post.content)}
+                      className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.3 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.259L19.752 8l-6.561 6.963z"/>
+                        </svg>
+                      </div>
+                      <span className="text-xs font-medium">Messenger</span>
+                    </button>
+                  </div>
+
+                  {/* Copy Link Section */}
+                  <p className="text-sm font-semibold text-gray-700 mb-3">Or copy link</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={getPostLink(post.id)}
+                      readOnly
+                      className="flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-600"
+                    />
+                    <button
+                      onClick={() => handleCopyLink(post.id)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center gap-2"
+                    >
+                      {copySuccess ? (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
+                  </div>
+                ))
+              )}
           </main>
 
-          {/* RIGHT SIDEBAR */}
+          {/* ========== RIGHT SIDEBAR ========== */}
           <aside className="col-span-3">
-            {/* LOCAL ANNOUNCEMENTS */}
+           {/* ========== LOCAL ANNOUNCEMENTS WIDGET ========== */}
             <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold">Local Announcements</h3>
@@ -483,7 +1859,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* MY ACTIVE REPORTS */}
+            {/* ========== ACTIVE REPORTS WIDGET ========== */}
             <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold">My Active Reports</h3>
@@ -514,7 +1890,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* COMMUNITY MISSION */}
+            {/* ========== COMMUNITY MISSION WIDGET ========== */}
             <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex items-center gap-2 mb-3">
                 <ThumbsUp className="w-6 h-6 text-blue-600" />
@@ -533,7 +1909,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* FOOTER */}
+      {/* ========== FOOTER ========== */}
       <footer className="bg-white border-t mt-12">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between text-sm text-gray-600">

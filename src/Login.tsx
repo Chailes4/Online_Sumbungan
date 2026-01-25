@@ -41,47 +41,58 @@ const Login = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!validateForm()) {
+  if (!validateForm()) return;
+
+  setLoading(true);
+
+  try {
+    // 1️⃣ Sign in
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
+
+    if (error) throw error;
+
+    const sessionUser = data.user;
+    if (!sessionUser) throw new Error("No user found after login");
+
+    // 2️⃣ Get user info from your users table
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", sessionUser.id) // Use ID instead of email for reliability
+      .single();
+
+    if (userError || !userData) {
+      console.error(userError);
+      setErrors({ email: "Failed to fetch user info" });
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-
-    try {
-      // Sign in with Supabase Auth (allows unverified emails)
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (error) throw error;
-
-      // Successfully logged in
-      console.log("Logged in user:", data.user);
-      
-      // Check if email is verified (optional warning)
-      if (!data.user.email_confirmed_at) {
-        console.warn("User email is not verified yet");
-      }
-      
-      // Redirect to dashboard
-      navigate("/dashboard");
-      
-    } catch (error: any) {
-      console.error("Error during login:", error);
-      
-      if (error.message.includes("Invalid login credentials")) {
-        setErrors({ email: "Invalid email or password" });
-      } else {
-        setErrors({ email: "Login failed. Please try again." });
-      }
-    } finally {
-      setLoading(false);
+    // 3️⃣ Redirect based on is_admin
+    if (userData.is_admin) {
+      navigate("/admin"); // ✅ AdminDashboard
+    } else {
+      navigate("/dashboard"); // Regular user
     }
-  };
+
+  } catch (error: any) {
+    console.error("Error during login:", error);
+    if (error.message.includes("Invalid login credentials")) {
+      setErrors({ email: "Invalid email or password" });
+    } else {
+      setErrors({ email: "Login failed. Please try again." });
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleGoogleSignIn = async () => {
     try {
