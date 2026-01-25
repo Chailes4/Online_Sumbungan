@@ -27,7 +27,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState({
     totalPending: 0,
     inProgress: 0,
-    resolvedToday: 0,
+    totalResolved: 0,
     pendingChange: 0
   });
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,48 +97,51 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchStats = async () => {
-    // Total pending
-    const { count: pendingCount } = await supabase
-      .from("reports")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pending");
+ const fetchStats = async () => {
+  // Total pending
+  const { count: pendingCount } = await supabase
+    .from("reports")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending");
 
-    // In progress
-    const { count: progressCount } = await supabase
-      .from("reports")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "in_progress");
+  // In progress
+  const { count: progressCount } = await supabase
+    .from("reports")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "in_progress");
 
-    // resolved
-    const { count: resolvedCount } = await supabase
-      .from("reports")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "resolved");
+  // Total resolved
+  const { count: totalResolvedCount } = await supabase
+    .from("reports")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "resolved");
 
-    // Yesterday's pending for comparison
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setHours(23, 59, 59, 999);
+  // Yesterday's pending for comparison
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+  const yesterdayEnd = new Date(yesterday);
+  yesterdayEnd.setHours(23, 59, 59, 999);
 
-    const { count: yesterdayPending } = await supabase
-      .from("reports")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pending")
-      .gte("created_at", yesterday.toISOString())
-      .lte("created_at", yesterdayEnd.toISOString());
+  const { count: yesterdayPending } = await supabase
+    .from("reports")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending")
+    .gte("created_at", yesterday.toISOString())
+    .lte("created_at", yesterdayEnd.toISOString());
 
-    const change = yesterdayPending ? Math.round(((pendingCount || 0) - yesterdayPending) / yesterdayPending * 100) : 0;
+  const change = yesterdayPending
+    ? Math.round(((pendingCount || 0) - yesterdayPending) / yesterdayPending * 100)
+    : 0;
 
-    setStats({
-      totalPending: pendingCount || 0,
-      inProgress: progressCount || 0,
-      resolvedToday: resolvedCount || 0,
-      pendingChange: change
-    });
-  };
+  setStats({
+    totalPending: pendingCount || 0,
+    inProgress: progressCount || 0,
+    totalResolved: totalResolvedCount || 0,  // ✅ only total resolved
+    pendingChange: change
+  });
+};
+
 
  const getCategoryLabel = (category: string) => {
     const labels: { [key: string]: string } = {
@@ -206,7 +209,8 @@ const AdminDashboard = () => {
       shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     });
 
-    const map = L.map('admin-map').setView([14.5547, 121.0244], 12);
+    
+    const map = L.map('admin-map').setView([14.8815, 120.8671], 12);
     mapInstanceRef.current = map;
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -267,7 +271,7 @@ const AdminDashboard = () => {
       markersRef.current.forEach(({ marker }) => {
         marker.setOpacity(1);
       });
-      mapInstanceRef.current.setView([14.5547, 121.0244], 12);
+      mapInstanceRef.current.setView([14.8815, 120.8671], 12);
       setSelectedPriority(null);
     } else {
       // Filter and zoom to selected priority markers
@@ -481,17 +485,18 @@ const AdminDashboard = () => {
                   <div className="text-3xl font-bold text-gray-900">{stats.inProgress}</div>
                 </div>
 
-                {/* Resolved Today */}
+               {/* Total Resolved */}
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                   <div className="flex items-start justify-between mb-4">
                     <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                       <CheckCircle className="w-6 h-6 text-green-600" />
                     </div>
-                    <div className="text-xs font-medium text-green-600">Target: 25</div>
+                    <div className="text-xs font-medium text-green-600">All Time</div>
                   </div>
-                  <div className="text-sm text-gray-600 mb-1">Resolved Today</div>
-                  <div className="text-3xl font-bold text-gray-900">{stats.resolvedToday}</div>
+                  <div className="text-sm text-gray-600 mb-1">Total Resolved</div>
+                  <div className="text-3xl font-bold text-gray-900">{stats.totalResolved}</div>
                 </div>
+
               </div>
 
               {/* Recent Reports */}
