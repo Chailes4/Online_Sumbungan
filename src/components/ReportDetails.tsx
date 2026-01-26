@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
+import EditReport from "./EditReport";
 import { 
   ArrowLeft, MapPin, AlertTriangle, Send, RefreshCw, Edit, XCircle
 } from "lucide-react";
@@ -15,7 +16,7 @@ interface Report {
   media_urls: string[];
   latitude: number;
   longitude: number;
-  status: 'pending' | 'in_progress' | 'resolved' | 'rejected';
+  status: 'pending' | 'in_progress' | 'resolved';
   created_at: string;
 }
 
@@ -28,10 +29,16 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
   const [userData, setUserData] = useState<any>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [sendingComment, setSendingComment] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     checkUser();
     fetchReport();
+    fetchComments(); 
   }, [reportId]);
 
   useEffect(() => {
@@ -39,6 +46,10 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
       initMap();
     }
   }, [report]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [comments]);
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -68,6 +79,56 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
       console.error("Error fetching report:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchComments = async () => {
+    setLoadingComments(true);
+    try {
+      const { data, error } = await supabase
+        .from("report_comments")
+        .select(`
+          *,
+          users:user_id (
+            full_name,
+            email,
+            is_admin
+          )
+        `)
+        .eq("report_id", reportId)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      setComments(data || []);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleSendComment = async () => {
+    if (!comment.trim() || !user) return;
+    
+    setSendingComment(true);
+    try {
+      const { error } = await supabase
+        .from("report_comments")
+        .insert({
+          report_id: reportId,
+          user_id: user.id,
+          message: comment.trim()
+        });
+
+      if (error) throw error;
+      
+      setComment("");
+      await fetchComments();
+    } catch (error) {
+      console.error("Error sending comment:", error);
+      alert("Failed to send comment");
+    } finally {
+      setSendingComment(false);
     }
   };
 
@@ -195,6 +256,7 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
     return `REF-2026-${id.slice(0, 4).toUpperCase()}`;
   };
 
+  // 1. FIRST: Handle loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -203,6 +265,7 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
     );
   }
 
+  // 2. SECOND: Handle report not found
   if (!report) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -220,6 +283,21 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
     );
   }
 
+  // 3. THIRD: Handle editing mode (after we know report exists)
+  if (isEditing) {
+    return (
+      <EditReport 
+        reportId={reportId}
+        onBack={() => setIsEditing(false)}
+        onSave={() => {
+          setIsEditing(false);
+          fetchReport();
+        }}
+      />
+    );
+  }
+
+  // 4. FINALLY: Calculate variables and render main content
   const steps = getStatusSteps();
   const currentStepIndex = steps.findIndex(step => 
     (report.status === 'pending' && step.label === 'Under Review') ||
@@ -243,7 +321,7 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
               </button>
             </div>
             <div className="flex items-center gap-2">
-               <div className="w-10 h-10 bg-green-400 rounded-full"></div>
+              <div className="w-10 h-10 bg-green-400 rounded-full"></div>
               <div className="text-left">
                 <p className="text-sm font-semibold">{userData?.full_name || user?.email?.split('@')[0] || "User"}</p>
                 <p className="text-xs text-gray-500">{userData?.barangay}</p>
@@ -266,12 +344,29 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
               {getReportId(report.id)} · Submitted on {formatDate(report.created_at)}
             </p>
           </div>
+          
           <div className="flex gap-2">
-            <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold flex items-center gap-2">
+            <button 
+              onClick={() => setIsEditing(true)}
+              disabled={report.status !== 'pending'}
+              className={`px-4 py-2 border rounded-lg font-semibold flex items-center gap-2 ${
+                report.status === 'pending' 
+                  ? 'border-gray-300 hover:bg-gray-50 cursor-pointer' 
+                  : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+              }`}
+            >
               <Edit className="w-4 h-4" />
               Edit Report
             </button>
-            <button className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-semibold flex items-center gap-2">
+
+            <button 
+              disabled={report.status !== 'pending'}
+              className={`px-4 py-2 border rounded-lg font-semibold flex items-center gap-2 ${
+                report.status === 'pending' 
+                  ? 'border-red-300 text-red-600 hover:bg-red-50 cursor-pointer' 
+                  : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+              }`}
+            >
               <XCircle className="w-4 h-4" />
               Withdraw
             </button>
@@ -403,69 +498,59 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-900">Activity & Updates</h2>
-                <RefreshCw className="w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-600" />
+                <RefreshCw 
+                  onClick={fetchComments}
+                  className="w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-600" 
+                />              
               </div>
 
-              <div className="space-y-6 mb-6">
-                {/* Status Update */}
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <RefreshCw className="w-5 h-5 text-blue-600" />
+              <div className="space-y-3 mb-6 max-h-96 overflow-y-auto">
+                {loadingComments ? (
+                  <div className="text-center py-8">
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-900">
-                      Status changed to <span className="font-semibold">In Progress</span>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">2 hours ago · System</p>
-                  </div>
-                </div>
-
-                {/* Department Update */}
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 mb-1">Public Works Dept</p>
-                    <p className="text-sm text-gray-700">
-                      Technical crew has been dispatched to assess the light fixture. Replacement bulb is on order. Estimated completion by tomorrow evening.
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">4 hours ago</p>
-                  </div>
-                </div>
-
-                {/* Assignment Update */}
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-900">
-                      Report <span className="font-semibold">Assigned</span> to Electrical Maintenance Unit
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">6 hours ago · Mark Thompson</p>
-                  </div>
-                </div>
-
-                {/* User Comment */}
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
-                  <div className="flex-1">
-                    <div className="bg-gray-100 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-semibold text-gray-900">You</p>
-                        <p className="text-xs text-gray-500">Oct 24, 2:15 PM</p>
+                ) : comments.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No messages yet. Start the conversation!</p>
+                ) : (
+                  comments.map((msg) => {
+                    const isUser = msg.user_id === user?.id;
+                    const senderName = msg.users?.full_name || msg.users?.email?.split('@')[0] || 'User';
+                    const isAdmin = msg.users?.is_admin === true;
+                    
+                    return (
+                      <div key={msg.id} className={`flex gap-2 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${
+                          isAdmin ? 'bg-orange-100' : 'bg-green-400'
+                        }`}>
+                          {isAdmin ? (
+                            <svg className="w-5 h-5 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3z"/>
+                            </svg>
+                          ) : (
+                            <span className="text-white text-sm font-semibold">
+                              {isUser ? (userData?.full_name?.[0] || 'U') : senderName[0]}
+                            </span>
+                          )}
+                        </div>
+                        <div className={`max-w-[70%] ${isUser ? 'items-end' : 'items-start'} flex flex-col`}>
+                          <div className={`${isUser ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'} rounded-lg p-3`}>
+                            <p className={`text-xs font-semibold mb-1 ${isUser ? 'text-blue-100' : 'text-gray-600'}`}>
+                              {isUser ? 'You' : (isAdmin ? 'Admin' : senderName)}
+                            </p>
+                            <p className="text-sm">{msg.message}</p>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 px-1">
+                            {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-700">
-                        Thank you for looking into this. It's quite dangerous at night for kids coming back from practice.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Comment Input */}
@@ -475,11 +560,25 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
                     type="text"
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendComment();
+                      }
+                    }}
                     placeholder="Add a comment or follow up..."
                     className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <button className="absolute right-2 top-2 bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700">
-                    <Send className="w-4 h-4" />
+                  <button 
+                    onClick={handleSendComment}
+                    disabled={!comment.trim() || sendingComment}
+                    className="absolute right-2 top-2 bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingComment ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">Public Works staff will see your message.</p>

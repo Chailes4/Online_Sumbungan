@@ -95,18 +95,20 @@ const [showComments, setShowComments] = useState<string | null>(null);
 const [comments, setComments] = useState<{ [postId: string]: Comment[] }>({});
 const [commentContent, setCommentContent] = useState("");
 const [postingComment, setPostingComment] = useState(false);
-const [replyingTo, setReplyingTo] = useState<string | null>(null); // Which comment is being replied to
-const [replyContent, setReplyContent] = useState(""); // Reply text content
-const [showReplies, setShowReplies] = useState<{ [commentId: string]: boolean }>({}); // Add this line
+const [replyingTo, setReplyingTo] = useState<string | null>(null); 
+const [replyContent, setReplyContent] = useState(""); 
+const [showReplies, setShowReplies] = useState<{ [commentId: string]: boolean }>({}); 
 
 // Share modal state
-const [showShareModal, setShowShareModal] = useState<string | null>(null); // Which post's share modal is showing
+const [showShareModal, setShowShareModal] = useState<string | null>(null); 
 const [copySuccess, setCopySuccess] = useState(false);
 
 const [showFileReport, setShowFileReport] = useState(false);
-const [showMyReports, setShowMyReports] = useState(false); // Add this
+const [showMyReports, setShowMyReports] = useState(false); 
 
-
+// My active reports
+const [userReports, setUserReports] = useState<any[]>([]);
+const [loadingReports, setLoadingReports] = useState(false);
 
 
     // ========== LIFECYCLE HOOKS ==========
@@ -118,6 +120,7 @@ const [showMyReports, setShowMyReports] = useState(false); // Add this
 useEffect(() => {
   if (user) {
     fetchPosts();
+    fetchUserReports();
   }
 }, [user]);
 
@@ -214,6 +217,55 @@ const fetchPosts = async () => {
   });
   setPosts(postsWithUsers);
 };
+
+
+const fetchUserReports = async () => {
+  if (!user) return;
+  
+  setLoadingReports(true);
+  try {
+    const { data, error } = await supabase
+      .from("reports")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(3); // Only show latest 3 reports
+
+    if (error) throw error;
+    setUserReports(data || []);
+  } catch (error) {
+    console.error("Error fetching user reports:", error);
+  } finally {
+    setLoadingReports(false);
+  }
+};
+
+const getStatusBadge = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return { bg: 'bg-orange-100', text: 'text-orange-700', label: 'PENDING' };
+    case 'in_progress':
+      return { bg: 'bg-blue-100', text: 'text-blue-700', label: 'IN PROGRESS' };
+    case 'resolved':
+      return { bg: 'bg-green-100', text: 'text-green-700', label: 'RESOLVED' };
+    default:
+      return { bg: 'bg-gray-100', text: 'text-gray-700', label: 'UNKNOWN' };
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return <Clock className="w-4 h-4 text-orange-500" />;
+    case 'in_progress':
+      return <Activity className="w-4 h-4 text-blue-500" />;
+    case 'resolved':
+      return <CheckCircle className="w-4 h-4 text-green-500" />;
+    default:
+      return <AlertTriangle className="w-4 h-4 text-gray-500" />;
+  }
+};
+
 
  // ========== IMAGE/VIDEO UPLOAD HANDLING ==========
   // Handle file selection and upload to Supabase storage
@@ -1859,36 +1911,52 @@ if (showMyReports) {
               </div>
             </div>
 
-            {/* ========== ACTIVE REPORTS WIDGET ========== */}
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold">My Active Reports</h3>
-                <button className="text-blue-600 text-sm font-semibold">Track Status</button>
+           {/* ========== ACTIVE REPORTS WIDGET ========== */}
+              <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold">My Active Reports</h3>
+                  <button 
+                    onClick={() => setShowMyReports(true)}
+                    className="text-blue-600 text-sm font-semibold hover:underline"
+                  >
+                    Track Status
+                  </button>
+                </div>
+                
+                {loadingReports ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                ) : userReports.length === 0 ? (
+                  <div className="text-center py-6">
+                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No active reports</p>
+                    <button
+                      onClick={() => setShowFileReport(true)}
+                      className="text-blue-600 text-sm font-semibold mt-2 hover:underline"
+                    >
+                      File your first report
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {userReports.map((report) => {
+                      const badge = getStatusBadge(report.status);
+                      return (
+                        <div key={report.id} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {getStatusIcon(report.status)}
+                            <span className="text-sm truncate">{report.title}</span>
+                          </div>
+                          <span className={`text-xs ${badge.bg} ${badge.text} px-2 py-1 rounded-full font-semibold whitespace-nowrap ml-2`}>
+                            {badge.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-blue-500" />
-                    <span className="text-sm">Street light malfunction</span>
-                  </div>
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">IN PROGRESS</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    <span className="text-sm">Pothole repair #992</span>
-                  </div>
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">RESOLVED</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm">Sidewalk debris</span>
-                  </div>
-                  <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-semibold">REVIEWING</span>
-                </div>
-              </div>
-            </div>
 
             {/* ========== COMMUNITY MISSION WIDGET ========== */}
             <div className="bg-white rounded-lg shadow-sm p-4">
