@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { 
   ArrowLeft, MapPin, User, Bell, Users, LayoutDashboard, FileText,
-  CheckCircle, Eye, Edit, LogOut, Check
+  CheckCircle, Eye, Edit, LogOut, Check, XCircle, AlertTriangle
 } from "lucide-react";
 
 interface Report {
@@ -15,9 +15,10 @@ interface Report {
   media_urls: string[];
   latitude: number;
   longitude: number;
-  status: 'pending' | 'in_progress' | 'resolved' | 'rejected';
+  status: 'pending' | 'in_progress' | 'resolved' | 'withdrawn';
   priority: 'high' | 'medium' | 'low';
   created_at: string;
+  withdraw_reason?: string;
   users?: {
     full_name: string;
     email: string;
@@ -53,7 +54,7 @@ const AdminReportDetails = ({ reportId, onBack }: { reportId: string; onBack: ()
     fetchReport();
     fetchComments(); 
     fetchInternalNotes(); 
-     fetchActivityLogs(); 
+    fetchActivityLogs(); 
   }, [reportId]);
 
   useEffect(() => {
@@ -63,8 +64,8 @@ const AdminReportDetails = ({ reportId, onBack }: { reportId: string; onBack: ()
   }, [report]);
 
   useEffect(() => {
-  messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-}, [comments]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [comments]);
 
 
   const checkUser = async () => {
@@ -100,130 +101,130 @@ const AdminReportDetails = ({ reportId, onBack }: { reportId: string; onBack: ()
   };
 
   const fetchComments = async () => {
-  setLoadingComments(true);
-  try {
-    const { data, error } = await supabase
-      .from("report_comments")
-      .select(`
-        *,
-        users:user_id (
-          full_name,
-          email,
-          is_admin
-        )
-      `)
-      .eq("report_id", reportId)
-      .order("created_at", { ascending: true });
+    setLoadingComments(true);
+    try {
+      const { data, error } = await supabase
+        .from("report_comments")
+        .select(`
+          *,
+          users:user_id (
+            full_name,
+            email,
+            is_admin
+          )
+        `)
+        .eq("report_id", reportId)
+        .order("created_at", { ascending: true });
 
-    if (error) throw error;
-    setComments(data || []);
-  } catch (error) {
-    console.error("Error fetching comments:", error);
-  } finally {
-    setLoadingComments(false);
-  }
-};
+      if (error) throw error;
+      setComments(data || []);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
 
-const fetchInternalNotes = async () => {
-  setLoadingNotes(true);
-  try {
-    const { data, error } = await supabase
-      .from("internal_notes")
-      .select(`
-        *,
-        users:user_id (
-          full_name,
-          email
-        )
-      `)
-      .eq("report_id", reportId)
-      .order("created_at", { ascending: false });
+  const fetchInternalNotes = async () => {
+    setLoadingNotes(true);
+    try {
+      const { data, error } = await supabase
+        .from("internal_notes")
+        .select(`
+          *,
+          users:user_id (
+            full_name,
+            email
+          )
+        `)
+        .eq("report_id", reportId)
+        .order("created_at", { ascending: false });
 
-    if (error) throw error;
-    setInternalNotes(data || []);
-  } catch (error) {
-    console.error("Error fetching internal notes:", error);
-  } finally {
-    setLoadingNotes(false);
-  }
-};
+      if (error) throw error;
+      setInternalNotes(data || []);
+    } catch (error) {
+      console.error("Error fetching internal notes:", error);
+    } finally {
+      setLoadingNotes(false);
+    }
+  };
 
-const handleSaveNote = async () => {
-  if (!internalNote.trim() || !user) return;
-  
-  setSavingNote(true);
-  try {
-    const { error } = await supabase
-      .from("internal_notes")
-      .insert({
-        report_id: reportId,
-        user_id: user.id,
-        note: internalNote.trim()
-      });
-
-    if (error) throw error;
+  const handleSaveNote = async () => {
+    if (!internalNote.trim() || !user) return;
     
-    setInternalNote("");
-    await fetchInternalNotes();
-    alert("Note saved successfully!");
-  } catch (error) {
-    console.error("Error saving note:", error);
-    alert("Failed to save note");
-  } finally {
-    setSavingNote(false);
-  }
-};
+    setSavingNote(true);
+    try {
+      const { error } = await supabase
+        .from("internal_notes")
+        .insert({
+          report_id: reportId,
+          user_id: user.id,
+          note: internalNote.trim()
+        });
+
+      if (error) throw error;
+      
+      setInternalNote("");
+      await fetchInternalNotes();
+      alert("Note saved successfully!");
+    } catch (error) {
+      console.error("Error saving note:", error);
+      alert("Failed to save note");
+    } finally {
+      setSavingNote(false);
+    }
+  };
 
 
-const fetchActivityLogs = async () => {
-  setLoadingLogs(true);
-  try {
-    const { data, error } = await supabase
-      .from("activity_logs")
-      .select(`
-        *,
-        users:user_id (
-          full_name,
-          email
-        )
-      `)
-      .eq("report_id", reportId)
-      .order("created_at", { ascending: false });
+  const fetchActivityLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const { data, error } = await supabase
+        .from("activity_logs")
+        .select(`
+          *,
+          users:user_id (
+            full_name,
+            email
+          )
+        `)
+        .eq("report_id", reportId)
+        .order("created_at", { ascending: false });
 
-    if (error) throw error;
-    setActivityLogs(data || []);
-  } catch (error) {
-    console.error("Error fetching activity logs:", error);
-  } finally {
-    setLoadingLogs(false);
-  }
-};
+      if (error) throw error;
+      setActivityLogs(data || []);
+    } catch (error) {
+      console.error("Error fetching activity logs:", error);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
 
 
-const handleSendComment = async () => {
-  if (!adminComment.trim() || !user) return;
-  
-  setSendingComment(true);
-  try {
-    const { error } = await supabase
-      .from("report_comments")
-      .insert({
-        report_id: reportId,
-        user_id: user.id,
-        message: adminComment.trim()
-      });
-
-    if (error) throw error;
+  const handleSendComment = async () => {
+    if (!adminComment.trim() || !user) return;
     
-    setAdminComment("");
-    await fetchComments();
-  } catch (error) {
-    console.error("Error sending comment:", error);
-    alert("Failed to send comment");
-  } finally {
-    setSendingComment(false);
-  }
-};
+    setSendingComment(true);
+    try {
+      const { error } = await supabase
+        .from("report_comments")
+        .insert({
+          report_id: reportId,
+          user_id: user.id,
+          message: adminComment.trim()
+        });
+
+      if (error) throw error;
+      
+      setAdminComment("");
+      await fetchComments();
+    } catch (error) {
+      console.error("Error sending comment:", error);
+      alert("Failed to send comment");
+    } finally {
+      setSendingComment(false);
+    }
+  };
 
 
   const initMap = () => {
@@ -252,92 +253,92 @@ const handleSendComment = async () => {
   };
 
   const renderMap = () => {
-  if (!mapRef.current || !report) return;
-  
-  const L = (window as any).L;
-  if (!L) return;
+    if (!mapRef.current || !report) return;
+    
+    const L = (window as any).L;
+    if (!L) return;
 
-  mapRef.current.innerHTML = '<div id="map-container" style="width: 100%; height: 100%;"></div>';
+    mapRef.current.innerHTML = '<div id="map-container" style="width: 100%; height: 100%;"></div>';
 
-  const map = L.map('map-container').setView([report.latitude, report.longitude], 15);
+    const map = L.map('map-container').setView([report.latitude, report.longitude], 15);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-  }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-  // Determine marker color based on priority
-  const markerColor = 
-    report.priority === 'high' ? '#ef4444' :   // Red for high priority
-    report.priority === 'medium' ? '#f97316' : // Orange for medium priority
-    '#6b7280';                                 // Gray for low priority
+    // Determine marker color based on priority
+    const markerColor = 
+      report.priority === 'high' ? '#ef4444' :   // Red for high priority
+      report.priority === 'medium' ? '#f97316' : // Orange for medium priority
+      '#6b7280';                                 // Gray for low priority
 
-  // Create custom colored marker icon
-  const customIcon = L.divIcon({
-    className: 'custom-marker',
-    html: `<div style="
-      background-color: ${markerColor}; 
-      width: 30px; 
-      height: 30px; 
-      border-radius: 50% 50% 50% 0; 
-      transform: rotate(-45deg); 
-      border: 3px solid white; 
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    "></div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 30]
-  });
+    // Create custom colored marker icon
+    const customIcon = L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="
+        background-color: ${markerColor}; 
+        width: 30px; 
+        height: 30px; 
+        border-radius: 50% 50% 50% 0; 
+        transform: rotate(-45deg); 
+        border: 3px solid white; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      "></div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 30]
+    });
 
-  // Add marker with custom color
-  L.marker([report.latitude, report.longitude], { icon: customIcon })
-    .addTo(map)
-    .bindPopup(`
-      <div style="min-width: 200px;">
-        <p style="font-size: 12px;">Status: ${getStatusLabel(report.status)}</p>
-      </div>
-    `)
-    .openPopup();
-};
+    // Add marker with custom color
+    L.marker([report.latitude, report.longitude], { icon: customIcon })
+      .addTo(map)
+      .bindPopup(`
+        <div style="min-width: 200px;">
+          <p style="font-size: 12px;">Status: ${getStatusLabel(report.status)}</p>
+        </div>
+      `)
+      .openPopup();
+  };
 
-const handleStatusChange = async (newStatus: string) => {
-  if (!report) return;
-  
-  setUpdating(true);
-  setShowStatusDropdown(false);
-  const oldStatus = report.status;
-  
-  try {
-    // Update the report status
-    const { error: updateError } = await supabase
-      .from("reports")
-      .update({ status: newStatus })
-      .eq("id", report.id);
+  const handleStatusChange = async (newStatus: string) => {
+    if (!report) return;
+    
+    setUpdating(true);
+    setShowStatusDropdown(false);
+    const oldStatus = report.status;
+    
+    try {
+      // Update the report status
+      const { error: updateError } = await supabase
+        .from("reports")
+        .update({ status: newStatus })
+        .eq("id", report.id);
 
-    if (updateError) throw updateError;
+      if (updateError) throw updateError;
 
-    // Log the activity
-    const { error: logError } = await supabase
-      .from("activity_logs")
-      .insert({
-        report_id: report.id,
-        user_id: user.id,
-        action: 'status_change',
-        description: `Status changed from '${getStatusLabel(oldStatus)}' to '${getStatusLabel(newStatus)}'`,
-        old_value: oldStatus,
-        new_value: newStatus
-      });
+      // Log the activity
+      const { error: logError } = await supabase
+        .from("activity_logs")
+        .insert({
+          report_id: report.id,
+          user_id: user.id,
+          action: 'status_change',
+          description: `Status changed from '${getStatusLabel(oldStatus)}' to '${getStatusLabel(newStatus)}'`,
+          old_value: oldStatus,
+          new_value: newStatus
+        });
 
-    if (logError) throw logError;
+      if (logError) throw logError;
 
-    setReport({ ...report, status: newStatus as any });
-    await fetchActivityLogs(); // Refresh logs
-    alert("Status updated successfully!");
-  } catch (error: any) {
-    console.error("Error updating status:", error);
-    alert("Failed to update status: " + error.message);
-  } finally {
-    setUpdating(false);
-  }
-};
+      setReport({ ...report, status: newStatus as any });
+      await fetchActivityLogs(); // Refresh logs
+      alert("Status updated successfully!");
+    } catch (error: any) {
+      console.error("Error updating status:", error);
+      alert("Failed to update status: " + error.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -349,6 +350,7 @@ const handleStatusChange = async (newStatus: string) => {
       case 'pending': return 'Pending';
       case 'in_progress': return 'In Progress';
       case 'resolved': return 'Resolved';
+      case 'withdrawn': return 'Withdrawn';  
       default: return status;
     }
   };
@@ -358,6 +360,7 @@ const handleStatusChange = async (newStatus: string) => {
       case 'pending': return 'bg-orange-500';
       case 'in_progress': return 'bg-blue-500';
       case 'resolved': return 'bg-green-500';
+      case 'withdrawn': return 'bg-gray-500';  
       default: return 'bg-gray-500';
     }
   };
@@ -525,6 +528,13 @@ const handleStatusChange = async (newStatus: string) => {
                       <span className="text-sm font-medium text-gray-900">Resolved</span>
                       {report.status === 'resolved' && <Check className="w-4 h-4 text-blue-600" />}
                     </button>
+                    <button
+                      onClick={() => handleStatusChange('withdrawn')}
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-left rounded-b-lg border-t"
+                    >
+                      <span className="text-sm font-medium text-gray-900">Withdrawn</span>
+                      {report.status === 'withdrawn' && <Check className="w-4 h-4 text-blue-600" />}
+                    </button>
                   </div>
                 )}
               </div>
@@ -534,6 +544,36 @@ const handleStatusChange = async (newStatus: string) => {
 
         {/* Content */}
         <main className="flex-1 overflow-auto p-8">
+          {/* Withdrawn Alert Banner - Show at the very top if status is withdrawn */}
+          {report.status === 'withdrawn' && report.withdraw_reason && (
+            <div className="bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500 rounded-lg p-6 mb-6 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                  <XCircle className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="text-lg font-bold text-red-900 mb-1">⚠️ Report Withdrawn by Citizen</h3>
+                      <p className="text-sm text-red-800">
+                        This report has been withdrawn and is no longer active. No further action is required.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 border-2 border-red-200 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2">Reason for Withdrawal</p>
+                        <p className="text-sm text-gray-900 leading-relaxed">{report.withdraw_reason}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-6">
             {/* Left Column */}
             <div className="col-span-2 space-y-6">
@@ -619,20 +659,40 @@ const handleStatusChange = async (newStatus: string) => {
               )}
 
               {/* Report History */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-                  <div className="flex items-center gap-2 mb-6">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h3 className="text-lg font-bold text-gray-900">Report History & Audit Log</h3>
-                  </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h3 className="text-lg font-bold text-gray-900">Report History & Audit Log</h3>
+                </div>
 
-                  <div className="space-y-4">
-                    {loadingLogs ? (
-                      <div className="text-center py-8">
-                        <div className="w-8 h-8 border-4 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto"></div>
+                <div className="space-y-4">
+                  {loadingLogs ? (
+                    <div className="text-center py-8">
+                      <div className="w-8 h-8 border-4 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto"></div>
+                    </div>
+                  ) : activityLogs.length === 0 ? (
+                    <div className="flex gap-4">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
                       </div>
-                    ) : activityLogs.length === 0 ? (
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-semibold text-gray-900">Report Submitted</div>
+                            <div className="text-sm text-gray-600">Citizen {report.users?.full_name} submitted the report.</div>
+                          </div>
+                          <div className="text-right text-sm">
+                            <div className="text-gray-500">{formatDate(report.created_at).split('•')[0].trim()}</div>
+                            <div className="font-semibold text-gray-900">{formatDate(report.created_at).split('•')[1].trim()}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Initial submission - always show */}
                       <div className="flex gap-4">
                         <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                           <CheckCircle className="w-5 h-5 text-green-600" />
@@ -650,271 +710,255 @@ const handleStatusChange = async (newStatus: string) => {
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        {/* Initial submission - always show */}
-                        <div className="flex gap-4">
-                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <CheckCircle className="w-5 h-5 text-green-600" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <div className="font-semibold text-gray-900">Report Submitted</div>
-                                <div className="text-sm text-gray-600">Citizen {report.users?.full_name} submitted the report.</div>
-                              </div>
-                              <div className="text-right text-sm">
-                                <div className="text-gray-500">{formatDate(report.created_at).split('•')[0].trim()}</div>
-                                <div className="font-semibold text-gray-900">{formatDate(report.created_at).split('•')[1].trim()}</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
 
                       {/* Activity logs - Show in reverse order (newest first is already handled by the query) */}
-                        {activityLogs.slice().reverse().map((log) => {
-                          const getIcon = () => {
-                            if (log.action === 'status_change') {
-                              if (log.new_value === 'resolved') {
-                                return { 
-                                  icon: CheckCircle, 
-                                  bg: 'bg-green-100', 
-                                  color: 'text-green-600',
-                                  label: 'Status Updated'
-                                };
-                              }
-                              if (log.new_value === 'in_progress') {
-                                return { 
-                                  icon: () => (
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
-                                  ), 
-                                  bg: 'bg-blue-100', 
-                                  color: 'text-blue-600',
-                                  label: 'Status Updated'
-                                };
-                              }
-                              if (log.new_value === 'pending') {
-                                return { 
-                                  icon: () => (
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                  ), 
-                                  bg: 'bg-orange-100', 
-                                  color: 'text-orange-600',
-                                  label: 'Status Updated'
-                                };
-                              }
+                      {activityLogs.slice().reverse().map((log) => {
+                        const getIcon = () => {
+                          if (log.action === 'status_change') {
+                            if (log.new_value === 'resolved') {
+                              return { 
+                                icon: CheckCircle, 
+                                bg: 'bg-green-100', 
+                                color: 'text-green-600',
+                                label: 'Status Updated'
+                              };
                             }
-                            return { 
-                              icon: Edit, 
-                              bg: 'bg-gray-100', 
-                              color: 'text-gray-600',
-                              label: 'Activity'
-                            };
+                            if (log.new_value === 'withdrawn') {
+                              return { 
+                                icon: XCircle, 
+                                bg: 'bg-red-100', 
+                                color: 'text-red-600',
+                                label: 'Report Withdrawn'
+                              };
+                            }
+                            if (log.new_value === 'in_progress') {
+                              return { 
+                                icon: () => (
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                  </svg>
+                                ), 
+                                bg: 'bg-blue-100', 
+                                color: 'text-blue-600',
+                                label: 'Status Updated'
+                              };
+                            }
+                            if (log.new_value === 'pending') {
+                              return { 
+                                icon: () => (
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                ), 
+                                bg: 'bg-orange-100', 
+                                color: 'text-orange-600',
+                                label: 'Status Updated'
+                              };
+                            }
+                          }
+                          return { 
+                            icon: Edit, 
+                            bg: 'bg-gray-100', 
+                            color: 'text-gray-600',
+                            label: 'Activity'
                           };
+                        };
 
-                          const iconData = getIcon();
-                          const IconComponent = iconData.icon;
+                        const iconData = getIcon();
+                        const IconComponent = iconData.icon;
 
-                          return (
-                            <div key={log.id} className="flex gap-4">
-                              <div className={`w-10 h-10 ${iconData.bg} rounded-full flex items-center justify-center flex-shrink-0`}>
-                                <IconComponent className={`w-5 h-5 ${iconData.color}`} />
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-start justify-between">
-                                  <div>
-                                    <div className="font-semibold text-gray-900">
-                                      {iconData.label}
-                                    </div>
-                                    <div className="text-sm text-gray-600">
-                                      {log.description} by {log.users?.full_name || 'Admin'}
-                                    </div>
+                        return (
+                          <div key={log.id} className="flex gap-4">
+                            <div className={`w-10 h-10 ${iconData.bg} rounded-full flex items-center justify-center flex-shrink-0`}>
+                              <IconComponent className={`w-5 h-5 ${iconData.color}`} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <div className="font-semibold text-gray-900">
+                                    {iconData.label}
                                   </div>
-                                  <div className="text-right text-sm">
-                                    <div className="text-gray-500">
-                                      {new Date(log.created_at).toLocaleDateString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric'
-                                      })}
-                                    </div>
-                                    <div className="font-semibold text-gray-900">
-                                      {new Date(log.created_at).toLocaleTimeString('en-US', {
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                      })}
-                                    </div>
+                                  <div className="text-sm text-gray-600">
+                                    {log.description} by {log.users?.full_name || 'Admin'}
+                                  </div>
+                                </div>
+                                <div className="text-right text-sm">
+                                  <div className="text-gray-500">
+                                    {new Date(log.created_at).toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })}
+                                  </div>
+                                  <div className="font-semibold text-gray-900">
+                                    {new Date(log.created_at).toLocaleTimeString('en-US', {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
                                   </div>
                                 </div>
                               </div>
                             </div>
-                          );
-                        })}
-                      </>
-                    )}
-                  </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
+              </div>
             </div>
 
             {/* Right Column */}
             <div className="space-y-6">
-           
-
-           {/* Activity & Updates - Chat */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd"/>
-                  </svg>
-                  <h3 className="font-bold text-gray-900">Chat with Reporter</h3>
-                </div>
-                <button
-                  onClick={fetchComments}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-              </div>
-
-            <div className="space-y-3 mb-4 max-h-96 overflow-y-auto">
-              {loadingComments ? (
-                <div className="text-center py-8">
-                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                </div>
-              ) : comments.length === 0 ? (
-                <p className="text-center text-gray-500 py-8 text-sm">No messages yet</p>
-              ) : (
-                comments.map((msg) => {
-                  const isAdmin = msg.users?.is_admin === true;
-                  const senderName = msg.users?.full_name || msg.users?.email?.split('@')[0] || 'User';
-                  
-                  return (
-                    <div key={msg.id} className={`flex gap-2 ${isAdmin ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
-                        isAdmin ? 'bg-blue-100' : 'bg-green-400'
-                      }`}>
-                        {isAdmin ? (
-                          <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3z"/>
-                          </svg>
-                        ) : (
-                          <span className="text-white text-xs font-semibold">{senderName[0]}</span>
-                        )}
-                      </div>
-                      <div className={`max-w-[70%] ${isAdmin ? 'items-end' : 'items-start'} flex flex-col`}>
-                        <div className={`${isAdmin ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'} rounded-lg p-3`}>
-                          <p className={`text-xs font-semibold mb-1 ${isAdmin ? 'text-blue-100' : 'text-gray-600'}`}>
-                            {isAdmin ? 'You' : senderName}
-                          </p>
-                          <p className="text-sm">{msg.message}</p>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1 px-1">
-                          {new Date(msg.created_at).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            <div className="relative">
-              <textarea
-                value={adminComment}
-                onChange={(e) => setAdminComment(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendComment();
-                  }
-                }}
-                placeholder="Type a message to the reporter..."
-                className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                rows={3}
-              />
-              <button
-                onClick={handleSendComment}
-                disabled={!adminComment.trim() || sendingComment}
-                className="absolute right-2 bottom-2 bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sendingComment ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-
-             {/* Internal Notes */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-                  <div className="flex items-center gap-2 mb-3">
+              {/* Activity & Updates - Chat */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
                     <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                      <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd"/>
                     </svg>
-                    <h3 className="font-bold text-gray-900">Internal Notes</h3>
+                    <h3 className="font-bold text-gray-900">Chat with Reporter</h3>
                   </div>
-
-                  <div className="mb-4 space-y-3 max-h-60 overflow-y-auto">
-                    {loadingNotes ? (
-                      <div className="text-center py-4">
-                        <div className="w-6 h-6 border-4 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto"></div>
-                      </div>
-                    ) : internalNotes.length === 0 ? (
-                      <p className="text-sm text-gray-500 text-center py-4">No internal notes yet</p>
-                    ) : (
-                      internalNotes.map((note) => (
-                        <div key={note.id} className="p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-start justify-between mb-2">
-                            <span className="font-semibold text-sm text-gray-900">
-                              {note.users?.full_name || note.users?.email?.split('@')[0] || 'Admin'}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(note.created_at).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric'
-                              })}, {new Date(note.created_at).toLocaleTimeString('en-US', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700">{note.note}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  <textarea
-                    value={internalNote}
-                    onChange={(e) => setInternalNote(e.target.value)}
-                    placeholder="Add a private staff comment..."
-                    className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-3"
-                    rows={3}
-                  />
-                  <button 
-                    onClick={handleSaveNote}
-                    disabled={!internalNote.trim() || savingNote}
-                    className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  <button
+                    onClick={fetchComments}
+                    className="text-gray-400 hover:text-gray-600"
                   >
-                    {savingNote ? 'Saving...' : 'Save Note'}
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
                   </button>
                 </div>
 
+                <div className="space-y-3 mb-4 max-h-96 overflow-y-auto">
+                  {loadingComments ? (
+                    <div className="text-center py-8">
+                      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8 text-sm">No messages yet</p>
+                  ) : (
+                    comments.map((msg) => {
+                      const isAdmin = msg.users?.is_admin === true;
+                      const senderName = msg.users?.full_name || msg.users?.email?.split('@')[0] || 'User';
+                      
+                      return (
+                        <div key={msg.id} className={`flex gap-2 ${isAdmin ? 'flex-row-reverse' : 'flex-row'}`}>
+                          <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
+                            isAdmin ? 'bg-blue-100' : 'bg-green-400'
+                          }`}>
+                            {isAdmin ? (
+                              <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3z"/>
+                              </svg>
+                            ) : (
+                              <span className="text-white text-xs font-semibold">{senderName[0]}</span>
+                            )}
+                          </div>
+                          <div className={`max-w-[70%] ${isAdmin ? 'items-end' : 'items-start'} flex flex-col`}>
+                            <div className={`${isAdmin ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'} rounded-lg p-3`}>
+                              <p className={`text-xs font-semibold mb-1 ${isAdmin ? 'text-blue-100' : 'text-gray-600'}`}>
+                                {isAdmin ? 'You' : senderName}
+                              </p>
+                              <p className="text-sm">{msg.message}</p>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1 px-1">
+                              {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    value={adminComment}
+                    onChange={(e) => setAdminComment(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendComment();
+                      }
+                    }}
+                    placeholder="Type a message to the reporter..."
+                    className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={3}
+                  />
+                  <button
+                    onClick={handleSendComment}
+                    disabled={!adminComment.trim() || sendingComment}
+                    className="absolute right-2 bottom-2 bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingComment ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Internal Notes */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                  </svg>
+                  <h3 className="font-bold text-gray-900">Internal Notes</h3>
+                </div>
+
+                <div className="mb-4 space-y-3 max-h-60 overflow-y-auto">
+                  {loadingNotes ? (
+                    <div className="text-center py-4">
+                      <div className="w-6 h-6 border-4 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto"></div>
+                    </div>
+                  ) : internalNotes.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">No internal notes yet</p>
+                  ) : (
+                    internalNotes.map((note) => (
+                      <div key={note.id} className="p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-start justify-between mb-2">
+                          <span className="font-semibold text-sm text-gray-900">
+                            {note.users?.full_name || note.users?.email?.split('@')[0] || 'Admin'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(note.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}, {new Date(note.created_at).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700">{note.note}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <textarea
+                  value={internalNote}
+                  onChange={(e) => setInternalNote(e.target.value)}
+                  placeholder="Add a private staff comment..."
+                  className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-3"
+                  rows={3}
+                />
+                <button 
+                  onClick={handleSaveNote}
+                  disabled={!internalNote.trim() || savingNote}
+                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingNote ? 'Saving...' : 'Save Note'}
+                </button>
+              </div>
             </div>
-            
           </div>
         </main>
       </div>

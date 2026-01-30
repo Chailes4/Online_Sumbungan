@@ -9,7 +9,9 @@ import {
   Home, FileText, Bell, MessageSquare, Search,
   Image, MapPin, Smile, AlertTriangle, Plus, MoreVertical,
   ThumbsUp, ThumbsDown, Share2, LogOut, Calendar,
-  Activity, CheckCircle, Clock, Megaphone, Trees, Send
+  Activity, CheckCircle, Clock, Megaphone, Trees, Send, Flame,
+  ShieldCheck, Ambulance, Building2, Phone, Backpack, UserRound, Users,
+   ChevronDown, Info
 } from "lucide-react";
 
 // TypeScript interface defining the structure of a Post object
@@ -111,6 +113,12 @@ const [userReports, setUserReports] = useState<any[]>([]);
 const [loadingReports, setLoadingReports] = useState(false);
 
 
+const [activeTab, setActiveTab] = useState<'feed' | 'alerts' | 'announcements' | 'parks'>('feed');
+
+const [alerts, setAlerts] = useState<any[]>([]);
+const [alertsLoading, setAlertsLoading] = useState(true);
+
+
     // ========== LIFECYCLE HOOKS ==========
   // Run once when component mounts
  useEffect(() => {
@@ -124,7 +132,24 @@ useEffect(() => {
   }
 }, [user]);
 
+useEffect(() => {
+  fetchAlerts();
+  
+  // Subscribe to real-time updates so alerts update automatically
+  const subscription = supabase
+    .channel('local_alerts_changes')
+    .on('postgres_changes', 
+      { event: '*', schema: 'public', table: 'local_alerts' },
+      () => {
+        fetchAlerts();
+      }
+    )
+    .subscribe();
 
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
 
   // ========== USER AUTHENTICATION ==========
   // Check current authenticated user and fetch their profile data
@@ -947,6 +972,84 @@ const handleShareToSocial = (platform: string, postId: string, postContent: stri
   window.open(shareUrl, '_blank', 'width=600,height=400');
 };
 
+const fetchAlerts = async () => {
+  setAlertsLoading(true);
+  const { data, error } = await supabase
+    .from("local_alerts")
+    .select("*")
+    .eq("status", "live")
+    .order("created_at", { ascending: false });
+
+  if (!error && data) {
+    // Optional: Filter by user's barangay
+    // If you have user.barangay field, uncomment below:
+    // const filteredAlerts = user?.barangay 
+    //   ? data.filter(alert => alert.affected_areas.includes(user.barangay))
+    //   : data;
+    setAlerts(data);
+  }
+  setAlertsLoading(false);
+};
+const getCategoryLabel = (category: string) => {
+  const labels: { [key: string]: string } = {
+    water_interruption: 'Water Interruption',
+    power_outage: 'Power Outage',
+    road_closure: 'Road Closure',
+    weather: 'Weather Alert',
+    health: 'Health Advisory',
+    emergency: 'Emergency'
+  };
+  return labels[category] || category;
+};
+
+const getUrgencyColor = (urgency: string) => {
+  switch (urgency) {
+    case 'critical': 
+      return { 
+        bg: 'bg-red-500', 
+        text: 'text-red-600', 
+        badge: 'bg-red-600', 
+        light: 'bg-red-100' 
+      };
+    case 'warning': 
+      return { 
+        bg: 'bg-orange-400', 
+        text: 'text-orange-600', 
+        badge: 'bg-orange-600', 
+        light: 'bg-orange-100' 
+      };
+    case 'advisory': 
+      return { 
+        bg: 'bg-blue-500', 
+        text: 'text-blue-600', 
+        badge: 'bg-blue-600', 
+        light: 'bg-blue-100' 
+      };
+    default: 
+      return { 
+        bg: 'bg-gray-500', 
+        text: 'text-gray-600', 
+        badge: 'bg-gray-600', 
+        light: 'bg-gray-100' 
+      };
+  }
+};
+
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+  
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes}m ago`;
+  } else if (diffInMinutes < 1440) {
+    const hours = Math.floor(diffInMinutes / 60);
+    return `${hours}h ago`;
+  } else {
+    const days = Math.floor(diffInMinutes / 1440);
+    return `${days}d ago`;
+  }
+};
 
 // ========== TIME FORMATTING ==========
   // Convert timestamp to human-readable "time ago" format
@@ -1107,10 +1210,17 @@ if (showMyReports) {
             <div className="bg-white rounded-lg shadow-sm p-4 space-y-2">
 
               {/* Navigation menu */}
-              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 text-blue-600 font-semibold">
-                <Home className="w-5 h-5" />
-                Home Feed
-              </button>
+        <button 
+          onClick={() => setActiveTab('feed')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-semibold ${
+            activeTab === 'feed' 
+              ? 'bg-blue-50 text-blue-600' 
+              : 'hover:bg-gray-50 text-gray-700'
+          }`}
+        >
+          <Home className="w-5 h-5" />
+          Home Feed
+        </button>
 
               <button 
                 onClick={() => setShowMyReports(true)}
@@ -1121,17 +1231,70 @@ if (showMyReports) {
               </button>
 
               {/* Local services section */}
-              <div className="pt-4 border-t">
-                <p className="text-xs font-semibold text-gray-500 uppercase px-4 mb-2">Local Services</p>
-                <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <Megaphone className="w-5 h-5" />
-                  Local Alerts
-                </button>
-                <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <Trees className="w-5 h-5" />
-                  Parks & Recreation
-                </button>
-              </div>
+                <div className="pt-4 border-t">
+                  <p className="text-xs font-semibold text-gray-500 uppercase px-4 mb-3">
+                    Local Services
+                  </p>
+
+                  {/* Local Alerts */}
+                  <button 
+                    onClick={() => setActiveTab('alerts')}
+                    className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg text-left ${
+                      activeTab === 'alerts' ? 'bg-red-50 text-red-600' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 ${activeTab === 'alerts' ? 'bg-red-200' : 'bg-red-100'} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                      <AlertTriangle className="w-5 h-5 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 leading-tight">
+                        Local Alerts
+                      </p>
+                      <p className="text-xs font-semibold text-red-600">
+                        EMERGENCY
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Announcements */}
+                  <button 
+                    onClick={() => setActiveTab('announcements')}
+                    className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg text-left ${
+                      activeTab === 'announcements' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 ${activeTab === 'announcements' ? 'bg-blue-200' : 'bg-blue-100'} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                      <Bell className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 leading-tight">
+                        Announcements
+                      </p>
+                      <p className="text-xs font-semibold text-gray-500">
+                        COMMUNITY
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Parks & Recreation */}
+                  <button 
+                    onClick={() => setActiveTab('parks')}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left ${
+                      activeTab === 'parks' ? 'bg-green-50 text-green-600' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 ${activeTab === 'parks' ? 'bg-green-200' : 'bg-green-100'} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                      <Trees className="w-5 h-5 text-green-600" />
+                    </div>
+                    <p className="font-semibold text-gray-900">
+                      Parks & Recreation
+                    </p>
+                  </button>
+                </div>
+
+
+
+
               {/* Logout button */}
               <div className="pt-4">
                 <button
@@ -1145,341 +1308,343 @@ if (showMyReports) {
             </div>
           </aside>
 
-          {/* ========== CENTER FEED ========== */}
-          <main className="col-span-6">
-            <button
-              onClick={() => setShowPostModal(true)}
-              className="w-full bg-white rounded-lg shadow-sm p-4 mb-4 flex items-center gap-3 hover:bg-gray-50 transition-colors"
-            >
-              <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
-              <span className="text-gray-500 text-left flex-1">Share something with your neighbors...</span>
-            </button>
+         {/* ========== CENTER FEED ========== */}
+<main className="col-span-6">
+  {/* ========== CREATE/EDIT POST MODAL ========== */}
+  {showPostModal && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
+          <h3 className="text-xl font-bold">{editingPost ? "Edit Post" : "Create Post"}</h3>
+          <button
+            onClick={() => {
+              setShowPostModal(false);
+              setPostContent("");
+              setIsAnonymous(false);
+              setSelectedImage(null);
+              setSelectedMediaType(null);
+              setSelectedLocation(null);
+              setSelectedMood(null);
+              setEditingPost(null);
+            }}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-            {/* ========== CREATE/EDIT POST MODAL ========== */}
-            {showPostModal && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
-                    <h3 className="text-xl font-bold">{editingPost ? "Edit Post" : "Create Post"}</h3>
-                    <button
-                      onClick={() => {
-                        setShowPostModal(false);
-                        setPostContent("");
-                        setIsAnonymous(false);
-                        setSelectedImage(null);
-                        setSelectedMediaType(null);
-                        setSelectedLocation(null);
-                        setSelectedMood(null);
-                        setEditingPost(null);
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
+        {/* Modal content */}
+        <div className="p-6">
+          <div className="flex gap-3 mb-4">
+            <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
+            <div className="flex-1">
+              <p className="font-semibold">{userData?.full_name || "User"}</p>
+              <p className="text-sm text-gray-500">Public</p>
+            </div>
+          </div>
 
-                  {/* Modal content */}
-                  <div className="p-6">
-                    <div className="flex gap-3 mb-4">
-                      <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
-                      <div className="flex-1">
-                        <p className="font-semibold">{userData?.full_name || "User"}</p>
-                        <p className="text-sm text-gray-500">Public</p>
-                      </div>
-                    </div>
+          {/* Post content textarea */}
+          <textarea
+            value={postContent}
+            onChange={(e) => setPostContent(e.target.value)}
+            placeholder="What's on your mind?"
+            className="w-full bg-gray-50 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[150px]"
+            autoFocus
+          />
 
-                    {/* Post content textarea */}
-                    <textarea
-                      value={postContent}
-                      onChange={(e) => setPostContent(e.target.value)}
-                      placeholder="What's on your mind?"
-                      className="w-full bg-gray-50 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[150px]"
-                      autoFocus
-                    />
+          {/* Media preview (image or video) */}
+          {selectedImage && (
+            <div className="relative mt-4">
+              {selectedMediaType === 'video' ? (
+                <video
+                  src={selectedImage}
+                  controls
+                  className="w-full rounded-lg max-h-96"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img
+                  src={selectedImage}
+                  alt="Preview"
+                  className="w-full rounded-lg max-h-96 object-cover"
+                />
+              )}
+              <button
+                onClick={handleRemoveImage}
+                className="absolute top-2 right-2 bg-gray-900 bg-opacity-75 text-white rounded-full p-2 hover:bg-opacity-90"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
 
-                    {/* Media preview (image or video) */}
-                    {selectedImage && (
-                      <div className="relative mt-4">
-                        {selectedMediaType === 'video' ? (
-                          <video
-                            src={selectedImage}
-                            controls
-                            className="w-full rounded-lg max-h-96"
-                          >
-                            Your browser does not support the video tag.
-                          </video>
-                        ) : (
-                          <img
-                            src={selectedImage}
-                            alt="Preview"
-                            className="w-full rounded-lg max-h-96 object-cover"
-                          />
-                        )}
-                        <button
-                          onClick={handleRemoveImage}
-                          className="absolute top-2 right-2 bg-gray-900 bg-opacity-75 text-white rounded-full p-2 hover:bg-opacity-90"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
+          {uploadingImage && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-sm text-blue-600">Uploading {selectedMediaType === 'video' ? 'video' : 'image'}...</span>
+            </div>
+          )}
 
-                    {uploadingImage && (
-                      <div className="mt-4 p-4 bg-blue-50 rounded-lg flex items-center gap-3">
-                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-sm text-blue-600">Uploading {selectedMediaType === 'video' ? 'video' : 'image'}...</span>
-                      </div>
-                    )}
-
-                    <div className="mt-4 p-4 border rounded-lg">
-                      <p className="text-sm font-semibold text-gray-700 mb-3">Add to your post</p>
-                      <div className="flex gap-2 flex-wrap">
-                        <label className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 cursor-pointer">
-                          <Image className="w-5 h-5 text-green-600" />
-                          <span className="text-sm font-medium">Photo/Video</span>
-                          <input
-                            type="file"
-                            accept="image/*,video/*"
-                            onChange={handleImageSelect}
-                            className="hidden"
-                            disabled={uploadingImage}
-                          />
-                        </label>
-
-                        <button 
-                          onClick={() => setShowLocationModal(true)}
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600"
-                        >
-                          <MapPin className="w-5 h-5 text-red-600" />
-                          <span className="text-sm font-medium">Location</span>
-                        </button>
-
-                        <button 
-                          onClick={() => setShowMoodModal(true)}
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600"
-                        >
-                          <Smile className="w-5 h-5 text-yellow-600" />
-                          <span className="text-sm font-medium">Mood</span>
-                        </button>
-                      </div>
-
-                      {selectedLocation && (
-                        <div className="mt-3 flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
-                          <MapPin className="w-4 h-4 text-red-600" />
-                          <span className="text-sm text-gray-700">{selectedLocation}</span>
-                          <button
-                            onClick={() => setSelectedLocation(null)}
-                            className="ml-auto text-gray-400 hover:text-gray-600"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
-
-                      {selectedMood && (
-                        <div className="mt-3 flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
-                          <span className="text-lg">{moods.find(m => m.label === selectedMood)?.emoji}</span>
-                          <span className="text-sm text-gray-700">Feeling {selectedMood}</span>
-                          <button
-                            onClick={() => setSelectedMood(null)}
-                            className="ml-auto text-gray-400 hover:text-gray-600"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <label className="flex items-center gap-2 mt-4 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-                      <input
-                        type="checkbox"
-                        checked={isAnonymous}
-                        onChange={(e) => setIsAnonymous(e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">Post anonymously</span>
-                    </label>
-                  </div>
-
-                  <div className="p-4 border-t bg-gray-50">
-                    <button
-                      onClick={editingPost ? handleUpdatePost : handleCreatePost}
-                      disabled={posting || (!postContent.trim() && !selectedImage) || uploadingImage}
-                      className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {posting ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          {editingPost ? "Updating..." : "Posting..."}
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-5 h-5" />
-                          {editingPost ? "Update" : "Post"}
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ========== LOCATION MODAL ========== */}
-            {showLocationModal && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
-                    <h3 className="text-xl font-bold">Add Location</h3>
-                    <button
-                      onClick={() => {
-                        setShowLocationModal(false);
-                        setLocationSearch("");
-                        setLocationSuggestions([]);
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="p-6">
-                    <div className="relative mb-4">
-                      <input
-                        type="text"
-                        value={locationSearch}
-                        onChange={(e) => handleLocationSearch(e.target.value)}
-                        placeholder="Search any city, barangay, or street..."
-                        className="w-full bg-gray-50 rounded-lg px-4 py-3 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        autoFocus
-                      />
-                      <Search className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
-                    </div>
-
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {locationSuggestions.map((loc) => (
-                        <button
-                          key={`${loc.lat}-${loc.lon}`}
-                          onClick={() => handleSelectLocation(loc.display_name)}
-                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-left"
-                        >
-                          <MapPin className="w-5 h-5 text-red-600" />
-                          <span className="text-gray-900">{loc.display_name}</span>
-                        </button>
-                      ))}
-                      
-                      {locationSearch && locationSuggestions.length === 0 && (
-                        <div className="text-center py-8 text-gray-500">
-                          <MapPin className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                          <p>No locations found</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ========== MOOD MODAL ========== */}
-            {showMoodModal && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
-                  <div className="flex items-center justify-between p-4 border-b">
-                    <h3 className="text-xl font-bold">How are you feeling?</h3>
-                    <button
-                      onClick={() => setShowMoodModal(false)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="p-6 grid grid-cols-2 gap-3">
-                    {moods.map((mood) => (
-                      <button
-                        key={mood.label}
-                        onClick={() => handleSelectMood(mood.label)}
-                        className={`${mood.color} p-4 rounded-lg hover:opacity-80 transition-opacity flex items-center gap-3`}
-                      >
-                        <span className="text-3xl">{mood.emoji}</span>
-                        <span className="font-medium text-gray-800">{mood.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ========== CALL-TO-ACTION BANNER ========== */}
-            <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4 mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">See a local issue?</p>
-                  <p className="text-sm text-gray-600">Help your community by reporting it now.</p>
-                </div>
-              </div>
+          <div className="mt-4 p-4 border rounded-lg">
+            <p className="text-sm font-semibold text-gray-700 mb-3">Add to your post</p>
+            <div className="flex gap-2 flex-wrap">
+              <label className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 cursor-pointer">
+                <Image className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium">Photo/Video</span>
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                  disabled={uploadingImage}
+                />
+              </label>
 
               <button 
-                onClick={() => setShowFileReport(true)}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2"
+                onClick={() => setShowLocationModal(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600"
               >
-                <Plus className="w-5 h-5" />
-                File a New Report
+                <MapPin className="w-5 h-5 text-red-600" />
+                <span className="text-sm font-medium">Location</span>
               </button>
-              
+
+              <button 
+                onClick={() => setShowMoodModal(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600"
+              >
+                <Smile className="w-5 h-5 text-yellow-600" />
+                <span className="text-sm font-medium">Mood</span>
+              </button>
             </div>
 
-            {/* ========== POSTS FEED ========== */}
-          {posts.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-              <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No posts yet</h3>
-              <p className="text-gray-500">Be the first to share something with your community!</p>
-            </div>
-          ) : (
-            posts.map((post) => (
-              <div key={post.id} className="bg-white rounded-lg shadow-sm p-6 mb-4">
-                <div className="flex gap-4">
-                  {/* ========== VOTING SECTION (LEFT SIDE) ========== */}
-                  <div className="flex flex-col items-center gap-1">
-                    <button
-                      onClick={() => handleVote(post.id, 'upvote')}
-                      className={`p-1 rounded hover:bg-gray-100 transition-colors ${
-                        post.userVote === 'upvote' ? 'text-blue-600' : 'text-gray-400'
-                      }`}
-                    >
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 4l-8 8h5v8h6v-8h5z" />
-                      </svg>
-                    </button>
-                    <span className="text-sm font-semibold text-gray-700">
-                          {post.upvotes ?? 0}
-                    </span>
-                    <button
-                      onClick={() => handleVote(post.id, 'downvote')}
-                      className={`p-1 rounded hover:bg-gray-100 transition-colors ${
-                        post.userVote === 'downvote' ? 'text-red-600' : 'text-gray-400'
-                      }`}
-                    >
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 20l8-8h-5V4H9v8H4z" />
-                      </svg>
-                    </button>
-                  </div>
+            {selectedLocation && (
+              <div className="mt-3 flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
+                <MapPin className="w-4 h-4 text-red-600" />
+                <span className="text-sm text-gray-700">{selectedLocation}</span>
+                <button
+                  onClick={() => setSelectedLocation(null)}
+                  className="ml-auto text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            {selectedMood && (
+              <div className="mt-3 flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
+                <span className="text-lg">{moods.find(m => m.label === selectedMood)?.emoji}</span>
+                <span className="text-sm text-gray-700">Feeling {selectedMood}</span>
+                <button
+                  onClick={() => setSelectedMood(null)}
+                  className="ml-auto text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <label className="flex items-center gap-2 mt-4 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+            <input
+              type="checkbox"
+              checked={isAnonymous}
+              onChange={(e) => setIsAnonymous(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Post anonymously</span>
+          </label>
+        </div>
+
+        <div className="p-4 border-t bg-gray-50">
+          <button
+            onClick={editingPost ? handleUpdatePost : handleCreatePost}
+            disabled={posting || (!postContent.trim() && !selectedImage) || uploadingImage}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {posting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                {editingPost ? "Updating..." : "Posting..."}
+              </>
+            ) : (
+              <>
+                <Send className="w-5 h-5" />
+                {editingPost ? "Update" : "Post"}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* ========== LOCATION MODAL ========== */}
+  {showLocationModal && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
+          <h3 className="text-xl font-bold">Add Location</h3>
+          <button
+            onClick={() => {
+              setShowLocationModal(false);
+              setLocationSearch("");
+              setLocationSuggestions([]);
+            }}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-6">
+          <div className="relative mb-4">
+            <input
+              type="text"
+              value={locationSearch}
+              onChange={(e) => handleLocationSearch(e.target.value)}
+              placeholder="Search any city, barangay, or street..."
+              className="w-full bg-gray-50 rounded-lg px-4 py-3 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+            />
+            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
+          </div>
+
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {locationSuggestions.map((loc) => (
+              <button
+                key={`${loc.lat}-${loc.lon}`}
+                onClick={() => handleSelectLocation(loc.display_name)}
+                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-left"
+              >
+                <MapPin className="w-5 h-5 text-red-600" />
+                <span className="text-gray-900">{loc.display_name}</span>
+              </button>
+            ))}
+            
+            {locationSearch && locationSuggestions.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <MapPin className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>No locations found</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* ========== MOOD MODAL ========== */}
+  {showMoodModal && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h3 className="text-xl font-bold">How are you feeling?</h3>
+          <button
+            onClick={() => setShowMoodModal(false)}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-6 grid grid-cols-2 gap-3">
+          {moods.map((mood) => (
+            <button
+              key={mood.label}
+              onClick={() => handleSelectMood(mood.label)}
+              className={`${mood.color} p-4 rounded-lg hover:opacity-80 transition-opacity flex items-center gap-3`}
+            >
+              <span className="text-3xl">{mood.emoji}</span>
+              <span className="font-medium text-gray-800">{mood.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* ========== FEED TAB ========== */}
+  {activeTab === 'feed' && (
+    <>
+      <button
+        onClick={() => setShowPostModal(true)}
+        className="w-full bg-white rounded-lg shadow-sm p-4 mb-4 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+      >
+        <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
+        <span className="text-gray-500 text-left flex-1">Share something with your neighbors...</span>
+      </button>
+
+      {/* ========== CALL-TO-ACTION BANNER ========== */}
+      <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4 mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <p className="font-semibold text-gray-900">See a local issue?</p>
+            <p className="text-sm text-gray-600">Help your community by reporting it now.</p>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => setShowFileReport(true)}
+          className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          File a New Report
+        </button>
+      </div>
+
+      {/* ========== POSTS FEED ========== */}
+      {posts.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+          <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-600 mb-2">No posts yet</h3>
+          <p className="text-gray-500">Be the first to share something with your community!</p>
+        </div>
+      ) : (
+        posts.map((post) => (
+          <div key={post.id} className="bg-white rounded-lg shadow-sm p-6 mb-4">
+            <div className="flex gap-4">
+              {/* ========== VOTING SECTION (LEFT SIDE) ========== */}
+              <div className="flex flex-col items-center gap-1">
+                <button
+                  onClick={() => handleVote(post.id, 'upvote')}
+                  className={`p-1 rounded hover:bg-gray-100 transition-colors ${
+                    post.userVote === 'upvote' ? 'text-blue-600' : 'text-gray-400'
+                  }`}
+                >
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 4l-8 8h5v8h6v-8h5z" />
+                  </svg>
+                </button>
+                <span className="text-sm font-semibold text-gray-700">
+                  {post.upvotes ?? 0}
+                </span>
+                <button
+                  onClick={() => handleVote(post.id, 'downvote')}
+                  className={`p-1 rounded hover:bg-gray-100 transition-colors ${
+                    post.userVote === 'downvote' ? 'text-red-600' : 'text-gray-400'
+                  }`}
+                >
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 20l8-8h-5V4H9v8H4z" />
+                  </svg>
+                </button>
+              </div>
 
               {/* ========== POST CONTENT ========== */}
               <div className="flex-1">
@@ -1523,456 +1688,1097 @@ if (showMyReports) {
                     </div>
                   </div>
 
-            {/* Edit/Delete Menu */}
-            {user?.id === post.user_id && (
-              <div className="relative">
-                <button 
-                  onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
-                  className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100"
-                >
-                  <MoreVertical className="w-6 h-6" />
-                </button>
-                
-                {openMenuId === post.id && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-10">
-                    <button
-                      onClick={() => handleEditPost(post)}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left"
-                    >
-                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      <span className="font-medium">Edit post</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeletePost(post.id, post.image_url)}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 text-left rounded-b-lg"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      <span className="font-medium">Delete post</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Post Text Content */}
-          <p className="text-gray-800 mb-4 whitespace-pre-wrap">{post.content}</p>
-
-          {/* Post Media */}
-          {post.image_url && (
-            <>
-              {post.image_url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                <video
-                  src={post.image_url}
-                  controls
-                  className="w-full rounded-lg mb-4 max-h-96"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              ) : (
-                <img
-                  src={post.image_url}
-                  alt="Post"
-                  className="w-full rounded-lg mb-4"
-                />
-              )}
-            </>
-          )}
-
-          {/* ========== POST ACTIONS (COMMENT & SHARE ONLY) ========== */}
-          <div className="flex items-center gap-2 pt-4 border-t">
-
-             <button 
-              onClick={() => handleToggleComments(post.id)}
-              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-gray-50"
-            >
-              <MessageSquare className="w-5 h-5" />
-              Comment {post.commentCount ? `(${post.commentCount})` : ''}
-            </button>
-
-            <button 
-                onClick={() => setShowShareModal(post.id)}
-                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-gray-50"
-              >
-                <Share2 className="w-5 h-5" />
-                Share
-              </button>
-
-          </div>
-        </div>
-      </div>
-
-         {/* ========== COMMENTS SECTION ========== */}
-          {showComments === post.id && (
-            <div className="mt-4 pt-4 border-t">
-              {/* Comment Input */}
-              <div className="flex gap-3 mb-4">
-                <div className="w-8 h-8 bg-green-400 rounded-full flex-shrink-0"></div>
-                <div className="flex-1">
-                  <textarea
-                    value={commentContent}
-                    onChange={(e) => setCommentContent(e.target.value)}
-                    placeholder="Write a comment..."
-                    className="w-full bg-gray-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    rows={2}
-                  />
-                  <div className="flex justify-end mt-2">
-                    <button
-                      onClick={() => handlePostComment(post.id)}
-                      disabled={postingComment || !commentContent.trim()}
-                      className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                    >
-                      {postingComment ? "Posting..." : "Post"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Comments List */}
-              <div className="space-y-4">
-                {comments[post.id]?.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">No comments yet. Be the first to comment!</p>
-                ) : (
-                  comments[post.id]?.map((comment) => (
-                    <div key={comment.id} className="space-y-2">
-                      {/* Main Comment */}
-                      <div className="flex gap-3">
-                        <div className="w-8 h-8 bg-purple-300 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
-                          {comment.users?.full_name?.slice(0, 2) || "U"}
-                        </div>
-                        <div className="flex-1">
-                          <div className="bg-gray-100 rounded-lg px-3 py-2">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-semibold text-sm">
-                                {comment.users?.full_name || comment.users?.username || "User"}
-                              </h4>
-                              {user?.id === comment.user_id && (
-                                <button
-                                  onClick={() => handleDeleteComment(post.id, comment.id)}
-                                  className="text-red-500 hover:text-red-700 text-xs"
-                                >
-                                  Delete
-                                </button>
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-800 mt-1">{comment.content}</p>
-                          </div>
-                          <div className="flex items-center gap-4 ml-3 mt-1">
-                            <span className="text-xs text-gray-500">
-                              {getTimeAgo(comment.created_at)}
-                            </span>
-                            <button
-                              onClick={() => handleToggleReply(comment.id)}
-                              className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
-                            >
-                              Reply
-                            </button>
-                            {/* Show/Hide Replies Button - only if there are replies */}
-                            {comment.replies && comment.replies.length > 0 && (
-                              <button
-                                onClick={() => handleToggleReplies(comment.id)}
-                                className="text-xs text-gray-600 hover:text-gray-800 font-semibold flex items-center gap-1"
-                              >
-                                {showReplies[comment.id] ? (
-                                  <>
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                    Hide {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                    Show {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
-                                  </>
-                                )}
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Reply Input */}
-                          {replyingTo === comment.id && (
-                            <div className="flex gap-2 mt-3">
-                              <div className="w-6 h-6 bg-green-400 rounded-full flex-shrink-0"></div>
-                              <div className="flex-1">
-                                <textarea
-                                  value={replyContent}
-                                  onChange={(e) => setReplyContent(e.target.value)}
-                                  placeholder="Write a reply..."
-                                  className="w-full bg-gray-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                  rows={2}
-                                  autoFocus
-                                />
-                                <div className="flex justify-end gap-2 mt-2">
-                                  <button
-                                    onClick={() => {
-                                      setReplyingTo(null);
-                                      setReplyContent("");
-                                    }}
-                                    className="text-gray-600 px-3 py-1 rounded-lg text-sm hover:bg-gray-100"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    onClick={() => handlePostReply(post.id, comment.id)}
-                                    disabled={postingComment || !replyContent.trim()}
-                                    className="bg-blue-600 text-white px-4 py-1 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                  >
-                                    {postingComment ? "Posting..." : "Reply"}
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Replies - Only show if showReplies[comment.id] is true */}
-                      {comment.replies && comment.replies.length > 0 && showReplies[comment.id] && (
-                        <div className="ml-11 space-y-2">
-                          {comment.replies.map((reply) => (
-                            <div key={reply.id} className="flex gap-3">
-                              <div className="w-7 h-7 bg-indigo-300 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
-                                {reply.users?.full_name?.slice(0, 2) || "U"}
-                              </div>
-                              <div className="flex-1">
-                                <div className="bg-gray-50 rounded-lg px-3 py-2">
-                                  <div className="flex items-center justify-between">
-                                    <h4 className="font-semibold text-sm">
-                                      {reply.users?.full_name || reply.users?.username || "User"}
-                                    </h4>
-                                    {user?.id === reply.user_id && (
-                                      <button
-                                        onClick={() => handleDeleteReply(post.id, comment.id, reply.id)}
-                                        className="text-red-500 hover:text-red-700 text-xs"
-                                      >
-                                        Delete
-                                      </button>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-gray-800 mt-1">{reply.content}</p>
-                                </div>
-                                <span className="text-xs text-gray-500 ml-3 mt-1">
-                                  {getTimeAgo(reply.created_at)}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+                  {/* Edit/Delete Menu */}
+                  {user?.id === post.user_id && (
+                    <div className="relative">
+                      <button 
+                        onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
+                        className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100"
+                      >
+                        <MoreVertical className="w-6 h-6" />
+                      </button>
+                      
+                      {openMenuId === post.id && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-10">
+                          <button
+                            onClick={() => handleEditPost(post)}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left"
+                          >
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span className="font-medium">Edit post</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeletePost(post.id, post.image_url)}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 text-left rounded-b-lg"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span className="font-medium">Delete post</span>
+                          </button>
                         </div>
                       )}
                     </div>
-                  ))
+                  )}
+                </div>
+
+                {/* Post Text Content */}
+                <p className="text-gray-800 mb-4 whitespace-pre-wrap">{post.content}</p>
+
+                {/* Post Media */}
+                {post.image_url && (
+                  <>
+                    {post.image_url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                      <video
+                        src={post.image_url}
+                        controls
+                        className="w-full rounded-lg mb-4 max-h-96"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    ) : (
+                      <img
+                        src={post.image_url}
+                        alt="Post"
+                        className="w-full rounded-lg mb-4"
+                      />
+                    )}
+                  </>
                 )}
-              </div>
-            </div>
-          )}
 
-
-          {/* ========== SHARE MODAL ========== */}
-          {showShareModal === post.id && (
-            <div 
-              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-              onClick={() => setShowShareModal(null)}
-            >
-              <div 
-                className="bg-white rounded-xl shadow-xl max-w-md w-full"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between p-4 border-b">
-                  <h3 className="text-lg font-bold">Share Post</h3>
-                  <button
-                    onClick={() => setShowShareModal(null)}
-                    className="text-gray-400 hover:text-gray-600"
+                {/* ========== POST ACTIONS (COMMENT & SHARE ONLY) ========== */}
+                <div className="flex items-center gap-2 pt-4 border-t">
+                  <button 
+                    onClick={() => handleToggleComments(post.id)}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-gray-50"
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <MessageSquare className="w-5 h-5" />
+                    Comment {post.commentCount ? `(${post.commentCount})` : ''}
+                  </button>
+
+                  <button 
+                    onClick={() => setShowShareModal(post.id)}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-gray-50"
+                  >
+                    <Share2 className="w-5 h-5" />
+                    Share
                   </button>
                 </div>
+              </div>
+            </div>
 
-                <div className="p-6">
-                  {/* Social Media Share Buttons */}
-                  <p className="text-sm font-semibold text-gray-700 mb-3">Share to social media</p>
-                  <div className="grid grid-cols-3 gap-3 mb-6">
-                    {/* Facebook */}
-                    <button
-                      onClick={() => handleShareToSocial('facebook', post.id, post.content)}
-                      className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                        </svg>
-                      </div>
-                      <span className="text-xs font-medium">Facebook</span>
-                    </button>
+            {/* ========== COMMENTS SECTION ========== */}
+            {showComments === post.id && (
+              <div className="mt-4 pt-4 border-t">
+                {/* Comment Input */}
+                <div className="flex gap-3 mb-4">
+                  <div className="w-8 h-8 bg-green-400 rounded-full flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <textarea
+                      value={commentContent}
+                      onChange={(e) => setCommentContent(e.target.value)}
+                      placeholder="Write a comment..."
+                      className="w-full bg-gray-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      rows={2}
+                    />
+                    <div className="flex justify-end mt-2">
+                      <button
+                        onClick={() => handlePostComment(post.id)}
+                        disabled={postingComment || !commentContent.trim()}
+                        className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      >
+                        {postingComment ? "Posting..." : "Post"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-                    {/* Telegram */}
-                    <button
-                      onClick={() => handleShareToSocial('telegram', post.id, post.content)}
-                      className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                        </svg>
-                      </div>
-                      <span className="text-xs font-medium">Telegram</span>
-                    </button>
+                {/* Comments List */}
+                <div className="space-y-4">
+                  {comments[post.id]?.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">No comments yet. Be the first to comment!</p>
+                  ) : (
+                    comments[post.id]?.map((comment) => (
+                      <div key={comment.id} className="space-y-2">
+                        {/* Main Comment */}
+                        <div className="flex gap-3">
+                          <div className="w-8 h-8 bg-purple-300 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
+                            {comment.users?.full_name?.slice(0, 2) || "U"}
+                          </div>
+                          <div className="flex-1">
+                            <div className="bg-gray-100 rounded-lg px-3 py-2">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-semibold text-sm">
+                                  {comment.users?.full_name || comment.users?.username || "User"}
+                                </h4>
+                                {user?.id === comment.user_id && (
+                                  <button
+                                    onClick={() => handleDeleteComment(post.id, comment.id)}
+                                    className="text-red-500 hover:text-red-700 text-xs"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-800 mt-1">{comment.content}</p>
+                            </div>
+                            <div className="flex items-center gap-4 ml-3 mt-1">
+                              <span className="text-xs text-gray-500">
+                                {getTimeAgo(comment.created_at)}
+                              </span>
+                              <button
+                                onClick={() => handleToggleReply(comment.id)}
+                                className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
+                              >
+                                Reply
+                              </button>
+                              {/* Show/Hide Replies Button - only if there are replies */}
+                              {comment.replies && comment.replies.length > 0 && (
+                                <button
+                                  onClick={() => handleToggleReplies(comment.id)}
+                                  className="text-xs text-gray-600 hover:text-gray-800 font-semibold flex items-center gap-1"
+                                >
+                                  {showReplies[comment.id] ? (
+                                    <>
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                      Hide {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                      </svg>
+                                      Show {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            </div>
 
-                    {/* Messenger */}
-                    <button
-                      onClick={() => handleShareToSocial('messenger', post.id, post.content)}
-                      className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.3 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.259L19.752 8l-6.561 6.963z"/>
-                        </svg>
+                            {/* Reply Input */}
+                            {replyingTo === comment.id && (
+                              <div className="flex gap-2 mt-3">
+                                <div className="w-6 h-6 bg-green-400 rounded-full flex-shrink-0"></div>
+                                <div className="flex-1">
+                                  <textarea
+                                    value={replyContent}
+                                    onChange={(e) => setReplyContent(e.target.value)}
+                                    placeholder="Write a reply..."
+                                    className="w-full bg-gray-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                    rows={2}
+                                    autoFocus
+                                  />
+                                  <div className="flex justify-end gap-2 mt-2">
+                                    <button
+                                      onClick={() => {
+                                        setReplyingTo(null);
+                                        setReplyContent("");
+                                      }}
+                                      className="text-gray-600 px-3 py-1 rounded-lg text-sm hover:bg-gray-100"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      onClick={() => handlePostReply(post.id, comment.id)}
+                                      disabled={postingComment || !replyContent.trim()}
+                                      className="bg-blue-600 text-white px-4 py-1 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                    >
+                                      {postingComment ? "Posting..." : "Reply"}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Replies - Only show if showReplies[comment.id] is true */}
+                        {comment.replies && comment.replies.length > 0 && showReplies[comment.id] && (
+                          <div className="ml-11 space-y-2">
+                            {comment.replies.map((reply) => (
+                              <div key={reply.id} className="flex gap-3">
+                                <div className="w-7 h-7 bg-indigo-300 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
+                                  {reply.users?.full_name?.slice(0, 2) || "U"}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="bg-gray-50 rounded-lg px-3 py-2">
+                                    <div className="flex items-center justify-between">
+                                      <h4 className="font-semibold text-sm">
+                                        {reply.users?.full_name || reply.users?.username || "User"}
+                                      </h4>
+                                      {user?.id === reply.user_id && (
+                                        <button
+                                          onClick={() => handleDeleteReply(post.id, comment.id, reply.id)}
+                                          className="text-red-500 hover:text-red-700 text-xs"
+                                        >
+                                          Delete
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-gray-800 mt-1">{reply.content}</p>
+                                  </div>
+                                  <span className="text-xs text-gray-500 ml-3 mt-1">
+                                    {getTimeAgo(reply.created_at)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <span className="text-xs font-medium">Messenger</span>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ========== SHARE MODAL ========== */}
+            {showShareModal === post.id && (
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+                onClick={() => setShowShareModal(null)}
+              >
+                <div 
+                  className="bg-white rounded-xl shadow-xl max-w-md w-full"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between p-4 border-b">
+                    <h3 className="text-lg font-bold">Share Post</h3>
+                    <button
+                      onClick={() => setShowShareModal(null)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </button>
                   </div>
 
-                  {/* Copy Link Section */}
-                  <p className="text-sm font-semibold text-gray-700 mb-3">Or copy link</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={getPostLink(post.id)}
-                      readOnly
-                      className="flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-600"
-                    />
-                    <button
-                      onClick={() => handleCopyLink(post.id)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center gap-2"
-                    >
-                      {copySuccess ? (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <div className="p-6">
+                    {/* Social Media Share Buttons */}
+                    <p className="text-sm font-semibold text-gray-700 mb-3">Share to social media</p>
+                    <div className="grid grid-cols-3 gap-3 mb-6">
+                      {/* Facebook */}
+                      <button
+                        onClick={() => handleShareToSocial('facebook', post.id, post.content)}
+                        className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                          <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                           </svg>
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </div>
+                        <span className="text-xs font-medium">Facebook</span>
+                      </button>
+
+                      {/* Telegram */}
+                      <button
+                        onClick={() => handleShareToSocial('telegram', post.id, post.content)}
+                        className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                          <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
                           </svg>
-                          Copy
-                        </>
-                      )}
-                    </button>
+                        </div>
+                        <span className="text-xs font-medium">Telegram</span>
+                      </button>
+
+                      {/* Messenger */}
+                      <button
+                        onClick={() => handleShareToSocial('messenger', post.id, post.content)}
+                        className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                          <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.3 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.259L19.752 8l-6.561 6.963z"/>
+                          </svg>
+                        </div>
+                        <span className="text-xs font-medium">Messenger</span>
+                      </button>
+                    </div>
+
+                    {/* Copy Link Section */}
+                    <p className="text-sm font-semibold text-gray-700 mb-3">Or copy link</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={getPostLink(post.id)}
+                        readOnly
+                        className="flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-600"
+                      />
+                      <button
+                        onClick={() => handleCopyLink(post.id)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center gap-2"
+                      >
+                        {copySuccess ? (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Copy
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
+            )}
+          </div>
+        ))
+      )}
+    </>
+  )}
+
+{/* ========== ALERTS TAB ========== */}
+{activeTab === 'alerts' && (
+  <div className="space-y-6">
+
+    {/* Header */}
+    <div className="flex items-center justify-between">
+      <div>
+        <h2 className="text-xl font-bold">LOCAL ALERTS</h2>
+        <p className="text-sm text-gray-500">
+          Verified real-time alerts for your immediate area.
+        </p>
+      </div>
+      {alerts.length > 0 && (
+        <span className="px-3 py-1 text-xs font-semibold text-red-600 bg-red-100 rounded-full">
+          {alerts.filter(a => a.urgency === 'critical').length || alerts.length} CRITICAL ALERT{alerts.length !== 1 ? 'S' : ''}
+        </span>
+      )}
+    </div>
+
+    {/* Loading State */}
+    {alertsLoading && (
+      <div className="text-center py-12">
+        <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm text-gray-500 mt-2">Loading alerts...</p>
+      </div>
+    )}
+
+    {/* No Alerts */}
+    {!alertsLoading && alerts.length === 0 && (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Info className="w-8 h-8 text-green-600" />
+        </div>
+        <h3 className="text-lg font-bold text-gray-900 mb-2">No Active Alerts</h3>
+        <p className="text-sm text-gray-500">
+          There are currently no emergency alerts for your area. Check back later for updates.
+        </p>
+      </div>
+    )}
+
+    {/* Alert Cards */}
+    {!alertsLoading && alerts.map((alert) => {
+      const urgencyStyle = getUrgencyColor(alert.urgency);
+      
+      return (
+        <div key={alert.id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* Left accent */}
+          <div className={`absolute left-0 top-0 h-full w-1.5 ${urgencyStyle.bg}`} />
+
+          <div className="p-6 space-y-4">
+            {/* Top row */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg ${urgencyStyle.light} flex items-center justify-center`}>
+                  <AlertTriangle className={`w-5 h-5 ${urgencyStyle.text}`} />
+                </div>
+                <div>
+                  <span className={`text-xs font-semibold text-white ${urgencyStyle.badge} px-2 py-0.5 rounded uppercase`}>
+                    {alert.urgency}
+                  </span>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formatTimeAgo(alert.created_at)} • {getCategoryLabel(alert.category)}
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
 
+            {/* Title */}
+            <h3 className="text-lg font-bold">
+              {alert.title}
+            </h3>
 
-                  </div>
-                ))
+            {/* Description */}
+            <p className="text-sm text-gray-700 leading-relaxed">
+              {alert.description}
+            </p>
+
+            {/* Content grid */}
+            <div className="grid md:grid-cols-2 gap-4">
+              {alert.required_action && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className={`text-xs font-semibold ${urgencyStyle.text} mb-1`}>
+                    REQUIRED ACTION
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    {alert.required_action}
+                  </p>
+                </div>
               )}
-          </main>
+
+              {alert.affected_areas && alert.affected_areas.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    AFFECTED AREAS
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    {alert.affected_areas.join(', ')}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            {alert.estimated_resolution && (
+              <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                <Clock className="w-4 h-4 text-gray-400" />
+                <p className="text-xs text-gray-500">
+                  Estimated Resolution: <span className="font-medium text-gray-700">{alert.estimated_resolution}</span>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    })}
+
+  </div>
+)}
+
+
+  {activeTab === "announcements" && (
+  <div className="space-y-6">
+
+    {/* ===== HEADER ===== */}
+    <div className="flex items-start justify-between">
+      <div>
+        <h2 className="text-xl font-bold">Local Announcements</h2>
+        <p className="text-sm text-gray-500 max-w-md">
+          The latest official updates, policies, and press releases for our community.
+        </p>
+      </div>
+
+      <div className="flex gap-2">
+        <button className="px-3 py-1.5 text-xs font-semibold bg-white border rounded-md">
+          Latest
+        </button>
+        <button className="px-3 py-1.5 text-xs font-semibold text-gray-500 border rounded-md">
+          Archived
+        </button>
+      </div>
+    </div>
+
+    {/* ===== ANNOUNCEMENT CARD ===== */}
+    <div className="bg-white rounded-xl shadow-sm border p-6 space-y-4">
+
+      {/* meta */}
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 font-semibold">
+          COUNCIL MEETING
+        </span>
+        <span>•</span>
+        <span>4 hours ago</span>
+      </div>
+
+      {/* title */}
+      <h3 className="text-lg font-bold">
+        Proposed Development: West Side Green Space Expansion
+      </h3>
+
+      {/* body */}
+      <p className="text-sm text-gray-600">
+        The Municipal Planning Committee has released the preliminary designs
+        for the revitalization of the West Side Park. This $2.4M project aims
+        to increase community engagement through new sports facilities and
+        sustainable landscaping.
+      </p>
+
+      {/* footer */}
+      <div className="flex flex-wrap gap-6 pt-3 text-xs text-gray-500">
+        <div className="flex items-center gap-1">
+          <MapPin className="w-4 h-4" />
+          City Hall, Auditorium A
+        </div>
+        <div className="flex items-center gap-1">
+          <Clock className="w-4 h-4" />
+          Oct 24, 2024 • 18:30 PM
+        </div>
+      </div>
+    </div>
+
+    {/* ===== UTILITY UPDATE CARD ===== */}
+    <div className="bg-white rounded-xl shadow-sm border p-6 space-y-4">
+
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-600 font-semibold">
+          UTILITY UPDATE
+        </span>
+        <span>•</span>
+        <span>Oct 22, 2024</span>
+      </div>
+
+      <h3 className="text-lg font-bold">
+        Quarterly Water Main Maintenance Cycle: North District
+      </h3>
+
+      <p className="text-sm text-gray-600">
+        Scheduled maintenance for Zone B will occur this weekend. We recommend
+        residents store a 24-hour supply of water as a precaution. Maintenance
+        crews will be working between 22:00 and 05:00 to minimize disruption.
+      </p>
+
+      {/* warning strip */}
+      <div className="flex items-center gap-2 bg-orange-50 text-orange-700 text-xs p-3 rounded-lg">
+        <AlertTriangle className="w-4 h-4" />
+        Potential low pressure expected across all residential units in Zone B
+      </div>
+    </div>
+
+  </div>
+)}
+
+  {/* ========== PARKS & RECREATION TAB ========== */}
+  {activeTab === 'parks' && (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+          <Trees className="w-6 h-6 text-green-600" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold">Parks & Recreation</h2>
+          <p className="text-sm text-gray-600">Facilities, events, and outdoor activities</p>
+        </div>
+      </div>
+      
+      <div className="space-y-4">
+        <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+          <div className="flex items-start gap-3">
+            <Trees className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-900">Central Park</h3>
+              <p className="text-sm text-gray-700 mt-2">Our main community park featuring a children's playground, basketball court, jogging path, and covered pavilion for events.</p>
+              <div className="mt-3 space-y-1">
+                <p className="text-xs text-gray-600">🕐 Open daily: 6:00 AM - 8:00 PM</p>
+                <p className="text-xs text-gray-600">📍 Main Street, Barangay Center</p>
+                <p className="text-xs text-gray-600">♿ Wheelchair accessible</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+          <div className="flex items-start gap-3">
+            <Trees className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-900">Riverside Recreation Area</h3>
+              <p className="text-sm text-gray-700 mt-2">Scenic riverside park with walking trails, picnic areas, and fishing spots. Perfect for family outings and nature walks.</p>
+              <div className="mt-3 space-y-1">
+                <p className="text-xs text-gray-600">🕐 Open daily: 5:00 AM - 7:00 PM</p>
+                <p className="text-xs text-gray-600">📍 River Road, East District</p>
+                <p className="text-xs text-gray-600">🎣 Fishing permit required</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+          <div className="flex items-start gap-3">
+            <Activity className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-900">Community Sports Complex</h3>
+              <p className="text-sm text-gray-700 mt-2">Multi-purpose sports facility with basketball courts, volleyball courts, and a covered gym. Available for public use and private rentals.</p>
+              <div className="mt-3 space-y-1">
+                <p className="text-xs text-gray-600">🕐 Open: Mon-Sun 6:00 AM - 9:00 PM</p>
+                <p className="text-xs text-gray-600">📍 Sports Avenue, North District</p>
+                <p className="text-xs text-gray-600">💰 Rental: ₱500/hour for private events</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+</main>
 
           {/* ========== RIGHT SIDEBAR ========== */}
           <aside className="col-span-3">
-           {/* ========== LOCAL ANNOUNCEMENTS WIDGET ========== */}
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold">Local Announcements</h3>
-                <button className="text-blue-600 text-sm font-semibold">See All</button>
-              </div>
-              <div className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <AlertTriangle className="w-5 h-5 text-red-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm">Water Main Repair</h4>
-                    <p className="text-xs text-gray-600">Disruption on North Blvd: Tomorrow 8am-4pm.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm">Town Hall Meeting</h4>
-                    <p className="text-xs text-gray-600">Join us this Thursday for the new park proposal.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-           {/* ========== ACTIVE REPORTS WIDGET ========== */}
-              <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold">My Active Reports</h3>
-                  <button 
-                    onClick={() => setShowMyReports(true)}
-                    className="text-blue-600 text-sm font-semibold hover:underline"
-                  >
-                    Track Status
-                  </button>
-                </div>
-                
-                {loadingReports ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : userReports.length === 0 ? (
-                  <div className="text-center py-6">
-                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No active reports</p>
-                    <button
-                      onClick={() => setShowFileReport(true)}
-                      className="text-blue-600 text-sm font-semibold mt-2 hover:underline"
+            {/* Show different content based on active tab */}
+            {activeTab === 'feed' && (
+              <>
+                {/* ========== LOCAL ANNOUNCEMENTS WIDGET ========== */}
+                <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold">Local Announcements</h3>
+                    <button 
+                      onClick={() => setActiveTab('announcements')}
+                      className="text-blue-600 text-sm font-semibold hover:underline"
                     >
-                      File your first report
+                      See All
                     </button>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {userReports.map((report) => {
-                      const badge = getStatusBadge(report.status);
-                      return (
-                        <div key={report.id} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            {getStatusIcon(report.status)}
-                            <span className="text-sm truncate">{report.title}</span>
-                          </div>
-                          <span className={`text-xs ${badge.bg} ${badge.text} px-2 py-1 rounded-full font-semibold whitespace-nowrap ml-2`}>
-                            {badge.label}
-                          </span>
-                        </div>
-                      );
-                    })}
+                  <div className="space-y-4">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm">Water Main Repair</h4>
+                        <p className="text-xs text-gray-600">Disruption on North Blvd: Tomorrow 8am-4pm.</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm">Town Hall Meeting</h4>
+                        <p className="text-xs text-gray-600">Join us this Thursday for the new park proposal.</p>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+                </div>
 
-            {/* ========== COMMUNITY MISSION WIDGET ========== */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <ThumbsUp className="w-6 h-6 text-blue-600" />
-                <h3 className="font-bold">Community Mission</h3>
-              </div>
-              <p className="text-sm text-gray-600 mb-4">
-                We aim to build a safer, more connected neighborhood through active participation and transparent communication.
-              </p>
-              <div className="flex gap-2">
-                <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">Respectful</span>
-                <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">Helpful</span>
-                <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">Verified</span>
-              </div>
+                {/* ========== ACTIVE REPORTS WIDGET ========== */}
+                <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold">My Active Reports</h3>
+                    <button 
+                      onClick={() => setShowMyReports(true)}
+                      className="text-blue-600 text-sm font-semibold hover:underline"
+                    >
+                      Track Status
+                    </button>
+                  </div>
+                  
+                  {loadingReports ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  ) : userReports.length === 0 ? (
+                    <div className="text-center py-6">
+                      <FileText className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No active reports</p>
+                      <button
+                        onClick={() => setShowFileReport(true)}
+                        className="text-blue-600 text-sm font-semibold mt-2 hover:underline"
+                      >
+                        File your first report
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {userReports.map((report) => {
+                        const badge = getStatusBadge(report.status);
+                        return (
+                          <div key={report.id} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {getStatusIcon(report.status)}
+                              <span className="text-sm truncate">{report.title}</span>
+                            </div>
+                            <span className={`text-xs ${badge.bg} ${badge.text} px-2 py-1 rounded-full font-semibold whitespace-nowrap ml-2`}>
+                              {badge.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* ========== COMMUNITY MISSION WIDGET ========== */}
+                <div className="bg-white rounded-lg shadow-sm p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ThumbsUp className="w-6 h-6 text-blue-600" />
+                    <h3 className="font-bold">Community Mission</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    We aim to build a safer, more connected neighborhood through active participation and transparent communication.
+                  </p>
+                  <div className="flex gap-2">
+                    <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">Respectful</span>
+                    <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">Helpful</span>
+                    <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">Verified</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+     {activeTab === "alerts" && (
+  <div className="space-y-6">
+
+    {/* ===== QUICK HOTLINES ===== */}
+    <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xs font-bold tracking-wide text-gray-700">
+          QUICK HOTLINES
+        </h3>
+        <span className="text-[10px] font-semibold text-red-600">
+          24/7 ACTIVE
+        </span>
+      </div>
+
+      <div className="space-y-3">
+
+        {/* Fire */}
+        <div className="flex items-center justify-between p-3 rounded-lg border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-red-500 flex items-center justify-center">
+              <Flame className="w-5 h-5 text-white" />
             </div>
+            <div>
+              <p className="text-xs text-gray-500">FIRE DEPARTMENT</p>
+              <p className="text-sm font-semibold">911</p>
+            </div>
+          </div>
+          <a href="tel:911" className="text-gray-300 hover:text-red-600">
+            <Phone className="w-4 h-4" />
+          </a>
+        </div>
+
+        {/* Police */}
+        <div className="flex items-center justify-between p-3 rounded-lg border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">POLICE STATION</p>
+              <p className="text-sm font-semibold">117</p>
+            </div>
+          </div>
+          <a href="tel:117" className="text-gray-300 hover:text-blue-600">
+            <Phone className="w-4 h-4" />
+          </a>
+        </div>
+
+        {/* Medical */}
+        <div className="flex items-center justify-between p-3 rounded-lg border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-sky-500 flex items-center justify-center">
+              <Ambulance className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">MEDICAL EMERGENCY</p>
+              <p className="text-sm font-semibold">166</p>
+            </div>
+          </div>
+          <a href="tel:166" className="text-gray-300 hover:text-sky-600">
+            <Phone className="w-4 h-4" />
+          </a>
+        </div>
+
+        {/* Barangay */}
+        <div className="flex items-center justify-between p-3 rounded-lg border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-green-600 flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">BARANGAY HALL</p>
+              <p className="text-sm font-semibold">555-1234</p>
+            </div>
+          </div>
+          <a href="tel:5551234" className="text-gray-300 hover:text-green-600">
+            <Phone className="w-4 h-4" />
+          </a>
+        </div>
+
+      </div>
+    </div>
+
+    {/* ===== SAFETY TIPS ===== */}
+    <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xs font-bold tracking-wide text-gray-700">
+          SAFETY TIPS & PREPAREDNESS
+        </h3>
+        <span className="text-[10px] font-semibold text-blue-600">
+          COMMUNITY
+        </span>
+      </div>
+
+      <div className="space-y-3">
+
+        <div className="flex gap-3 p-3 rounded-lg bg-gray-50">
+          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+            <Backpack className="w-4 h-4 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">
+              Prepare a 72-hour emergency kit
+            </p>
+            <p className="text-xs text-gray-600">
+              Include water, non-perishable food, flashlights, and first-aid.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 p-3 rounded-lg bg-gray-50">
+          <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+            <UserRound className="w-4 h-4 text-orange-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">
+              Check on elderly neighbors
+            </p>
+            <p className="text-xs text-gray-600">
+              Ensure access to heat, water, and medicine.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 p-3 rounded-lg bg-gray-50">
+          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+            <Users className="w-4 h-4 text-green-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">
+              Establish a contact plan
+            </p>
+            <p className="text-xs text-gray-600">
+              Designate an out-of-town contact.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    {/* ===== PUBLIC SAFETY NOTICE ===== */}
+ <div className="bg-white rounded-xl shadow-sm border-l-4 border-red-500 flex gap-3 p-4">
+  {/* Left icon */}
+  <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+
+  {/* Content */}
+  <div>
+    <p className="text-xs font-semibold text-red-600">
+      PUBLIC SAFETY NOTICE
+    </p>
+    <p className="text-xs text-gray-600">
+      Verified information is updated every 15 minutes. For immediate
+      life-threatening emergencies, dial 911 directly.
+    </p>
+  </div>
+</div>
+
+  </div>
+)}
+           {activeTab === "announcements" && (
+  <>
+    {/* ===== COMMUNITY CALENDAR ===== */}
+    <div className="bg-white rounded-xl shadow-sm border p-4 mb-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="font-semibold text-gray-900">October 2024</h3>
+          <p className="text-xs text-gray-500 uppercase">
+            Community Calendar
+          </p>
+        </div>
+        <div className="flex gap-2 text-gray-400 text-lg">
+          <button className="hover:text-gray-600">‹</button>
+          <button className="hover:text-gray-600">›</button>
+        </div>
+      </div>
+
+      {/* Weekdays */}
+      <div className="grid grid-cols-7 text-xs text-center text-gray-500 mb-2">
+        {["SU", "MO", "TU", "WE", "TH", "FR", "SA"].map(day => (
+          <div key={day} className="font-semibold">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Dates */}
+      <div className="grid grid-cols-7 gap-1 text-sm text-center">
+        {Array.from({ length: 31 }, (_, i) => {
+          const day = i + 1;
+          const isToday = day === 24;
+          return (
+            <div
+              key={day}
+              className={`py-1.5 rounded-lg font-medium cursor-pointer
+                ${isToday
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+                }`}
+            >
+              {day}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+
+    {/* ===== DETAILED SCHEDULE ===== */}
+    <div className="bg-white rounded-xl shadow-sm border p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900 text-sm">
+          DETAILED SCHEDULE
+        </h3>
+        <button className="text-xs text-blue-600 font-semibold hover:underline">
+          Download ICS
+        </button>
+      </div>
+
+      {/* Event */}
+      <div className="flex gap-3 mb-4">
+        {/* Date */}
+        <div className="w-12 text-center">
+          <p className="text-xs text-gray-500">OCT</p>
+          <p className="text-lg font-bold text-gray-900">24</p>
+        </div>
+
+        {/* Event Card */}
+        <div className="flex-1 border rounded-lg p-3">
+          <div className="flex items-center justify-between mb-1">
+            <p className="font-semibold text-gray-900 text-sm">
+              City Hall Town Hall
+            </p>
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
+              Confirmed
+            </span>
+          </div>
+
+          <p className="text-xs text-gray-600 mb-1">
+            🕒 18:30 – 20:00 (Duration: 90 min)
+          </p>
+          <p className="text-xs text-gray-600 mb-1">
+            📍 Conference Room B, 2nd Floor
+          </p>
+
+          <p className="text-xs text-gray-500 italic mt-1">
+            Topic: West Side Green Space  
+            <br />
+            Expansion discussion and public feedback session
+          </p>
+        </div>
+      </div>
+
+      {/* Load More */}
+      <button className="w-full text-sm text-gray-600 font-semibold py-2 hover:text-gray-800 flex items-center justify-center gap-1">
+        Load More Events
+        <ChevronDown className="w-4 h-4" />
+      </button>
+    </div>
+  </>
+)}
+
+
+            {activeTab === 'parks' && (
+              <>
+                {/* ========== QUICK FACILITIES WIDGET ========== */}
+                <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Trees className="w-6 h-6 text-green-600" />
+                    <h3 className="font-bold">Quick Access</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors text-left">
+                      <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Trees className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Find Nearest Park</p>
+                        <p className="text-xs text-gray-600">View map & directions</p>
+                      </div>
+                    </button>
+                    <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Book Facilities</p>
+                        <p className="text-xs text-gray-600">Reserve for events</p>
+                      </div>
+                    </button>
+                    <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left">
+                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Activity className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Activity Programs</p>
+                        <p className="text-xs text-gray-600">Classes & workshops</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* ========== PARK HOURS WIDGET ========== */}
+                <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                  <h3 className="font-bold mb-3">Operating Hours</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Central Park</span>
+                      <span className="font-semibold text-gray-900">6AM - 8PM</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Riverside Area</span>
+                      <span className="font-semibold text-gray-900">5AM - 7PM</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Sports Complex</span>
+                      <span className="font-semibold text-gray-900">6AM - 9PM</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                    <p className="text-xs text-green-800">
+                      <span className="font-semibold">🌟 Pro Tip:</span> Visit early morning for quieter outdoor activities!
+                    </p>
+                  </div>
+                </div>
+
+                {/* ========== ACTIVITIES & AMENITIES WIDGET ========== */}
+                <div className="bg-white rounded-lg shadow-sm p-4">
+                  <h3 className="font-bold mb-3">Available Amenities</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-700">Basketball Courts (3)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-700">Playgrounds (2)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-700">Jogging Paths (5km)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-700">Picnic Areas (4)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-700">Event Pavilions (2)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-700">Restrooms (6)</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </aside>
         </div>
       </div>

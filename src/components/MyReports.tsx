@@ -5,7 +5,7 @@ import ReportDetails from "./ReportDetails";
 import { 
   Search, ChevronDown, MapPin, Calendar, Home, FileText,
   AlertTriangle, CheckCircle, Clock, Eye, Bell, MessageSquare,
-  Megaphone, Trees, LogOut
+  Megaphone, Trees, LogOut, XCircle
 } from "lucide-react";
 
 interface Report {
@@ -18,7 +18,7 @@ interface Report {
   media_urls: string[];
   latitude: number;
   longitude: number;
-  status: 'pending' | 'in_progress' | 'resolved' | 'rejected';
+  status: 'pending' | 'in_progress' | 'resolved' | 'withdrawn';
   created_at: string;
 }
 
@@ -32,6 +32,10 @@ const MyReports = ({ onBack, onNavigateHome }: { onBack: () => void; onNavigateH
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("date");
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const reportsPerPage = 5;
+
 
   useEffect(() => {
     checkUser();
@@ -60,6 +64,11 @@ const MyReports = ({ onBack, onNavigateHome }: { onBack: () => void; onNavigateH
       setUserData(userData);
     }
   };
+
+    useEffect(() => {
+      setCurrentPage(1);
+    }, [searchQuery, statusFilter, sortBy]);
+
 
   const fetchReports = async () => {
     try {
@@ -99,6 +108,16 @@ const MyReports = ({ onBack, onNavigateHome }: { onBack: () => void; onNavigateH
     setFilteredReports(filtered);
   };
 
+  const indexOfLastReport = currentPage * reportsPerPage;
+  const indexOfFirstReport = indexOfLastReport - reportsPerPage;
+  const currentReports = filteredReports.slice(
+    indexOfFirstReport,
+    indexOfLastReport
+  );
+
+  const totalPages = Math.ceil(filteredReports.length / reportsPerPage);
+
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.clear();
@@ -122,12 +141,12 @@ const MyReports = ({ onBack, onNavigateHome }: { onBack: () => void; onNavigateH
           textColor: 'text-green-700',
           icon: <CheckCircle className="w-4 h-4" />
         };
-      case 'rejected':
+      case 'withdrawn':
         return {
-          label: 'REJECTED',
-          bgColor: 'bg-red-100',
-          textColor: 'text-red-700',
-          icon: <AlertTriangle className="w-4 h-4" />
+          label: 'WITHDRAWN',
+          bgColor: 'bg-gray-100',
+          textColor: 'text-gray-700',
+          icon: <XCircle className="w-4 h-4" />
         };
       default:
         return {
@@ -166,8 +185,17 @@ const MyReports = ({ onBack, onNavigateHome }: { onBack: () => void; onNavigateH
 
   // Show report details if a report is selected
 if (selectedReportId) {
-  return <ReportDetails reportId={selectedReportId} onBack={() => setSelectedReportId(null)} />;
-}
+    return (
+      <ReportDetails 
+        reportId={selectedReportId} 
+        onBack={() => {
+          setSelectedReportId(null);
+          fetchReports(); // Refresh reports list when coming back
+        }} 
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -228,17 +256,52 @@ if (selectedReportId) {
                 My Reports
               </button>
 
-              <div className="pt-4 border-t">
-                <p className="text-xs font-semibold text-gray-500 uppercase px-4 mb-2">Local Services</p>
-                <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <Megaphone className="w-5 h-5" />
-                  Local Alerts
-                </button>
-                <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <Trees className="w-5 h-5" />
+            {/* Local services section */}
+            <div className="pt-4 border-t">
+              <p className="text-xs font-semibold text-gray-500 uppercase px-4 mb-3">
+                Local Services
+              </p>
+
+              {/* Local Alerts */}
+              <button className="w-full flex items-start gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 text-left">
+                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 leading-tight">
+                    Local Alerts
+                  </p>
+                  <p className="text-xs font-semibold text-red-600">
+                    EMERGENCY
+                  </p>
+                </div>
+              </button>
+
+              {/* Announcements */}
+              <button className="w-full flex items-start gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 text-left">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Bell className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 leading-tight">
+                    Announcements
+                  </p>
+                  <p className="text-xs font-semibold text-gray-500">
+                    COMMUNITY
+                  </p>
+                </div>
+              </button>
+
+              {/* Parks & Recreation */}
+              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 text-left">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Trees className="w-5 h-5 text-green-600" />
+                </div>
+                <p className="font-semibold text-gray-900">
                   Parks & Recreation
-                </button>
-              </div>
+                </p>
+              </button>
+            </div>
 
               <div className="pt-4">
                 <button
@@ -297,7 +360,7 @@ if (selectedReportId) {
                     <option value="pending">Under Review</option>
                     <option value="in_progress">In Progress</option>
                     <option value="resolved">Resolved</option>
-                    <option value="rejected">Rejected</option>
+                    <option value="withdrawn">Withdrawn</option>
                   </select>
                   <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
                 </div>
@@ -334,7 +397,7 @@ if (selectedReportId) {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredReports.map((report) => {
+              {currentReports.map((report) => {
                   const statusConfig = getStatusConfig(report.status);
                   return (
                     <div
@@ -353,6 +416,7 @@ if (selectedReportId) {
                               {report.title}
                             </h3>
                             <span className={`${statusConfig.bgColor} ${statusConfig.textColor} px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 whitespace-nowrap`}>
+                              {statusConfig.icon}
                               {statusConfig.label}
                             </span>
                           </div>
@@ -384,6 +448,47 @@ if (selectedReportId) {
                 })}
               </div>
             )}
+
+            <div className="flex justify-between items-center mt-6">
+                <p className="text-sm text-gray-600">
+                  Showing {indexOfFirstReport + 1}–
+                  {Math.min(indexOfLastReport, filteredReports.length)} of{" "}
+                  {filteredReports.length} reports
+                </p>
+
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 text-sm border rounded-lg disabled:opacity-40"
+                  >
+                    Prev
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-2 text-sm rounded-lg border
+                        ${currentPage === page
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "hover:bg-gray-50"
+                        }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 text-sm border rounded-lg disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+
           </main>
 
           {/* ========== RIGHT SIDEBAR ========== */}

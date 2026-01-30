@@ -16,8 +16,9 @@ interface Report {
   media_urls: string[];
   latitude: number;
   longitude: number;
-  status: 'pending' | 'in_progress' | 'resolved';
+  status: 'pending' | 'in_progress' | 'resolved' | 'withdrawn';
   created_at: string;
+  withdraw_reason?: string;
 }
 
 const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => void }) => {
@@ -34,7 +35,12 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
   const [sendingComment, setSendingComment] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [selectedReasonType, setSelectedReasonType] = useState("");
+  const [customReason, setCustomReason] = useState("");
 
+  
   useEffect(() => {
     checkUser();
     fetchReport();
@@ -132,6 +138,59 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
     }
   };
 
+  const handleWithdrawClick = () => {
+    setShowWithdrawModal(true);
+  };
+
+  const handleWithdrawConfirm = async () => {
+    // Get the final reason - either selected reason or custom reason
+    const finalReason = selectedReasonType === 'other' 
+      ? customReason.trim() 
+      : selectedReasonType;
+
+    if (!finalReason) {
+      alert("Please select or provide a reason for withdrawing this report.");
+      return;
+    }
+
+    setWithdrawing(true);
+    try {
+      const { error } = await supabase
+        .from("reports")
+        .update({ 
+          status: 'withdrawn',
+          withdraw_reason: finalReason
+        })
+        .eq("id", reportId)
+        .select()     
+        .single();    
+      
+      if (error) {
+        console.error("Withdraw error:", error);
+        throw error;
+      }
+
+      setReport(prev => prev ? { ...prev, status: 'withdrawn', withdraw_reason: finalReason } : null);
+      setShowWithdrawModal(false);
+      setSelectedReasonType("");
+      setCustomReason("");
+
+      alert("Report withdrawn successfully");
+      onBack();
+    } catch (error: any) {
+      console.error("Error withdrawing report:", error);
+      alert(`Failed to withdraw report: ${error.message || "Please try again."}`);
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  const handleWithdrawCancel = () => {
+    setShowWithdrawModal(false);
+    setSelectedReasonType("");
+    setCustomReason("");
+  };
+
   const initMap = () => {
     if (!mapRef.current || !report) return;
 
@@ -182,6 +241,13 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
   };
 
   const getStatusSteps = () => {
+    if (report?.status === 'withdrawn') {
+      return [
+        { key: 'pending', label: 'Submitted', completed: true },
+        { key: 'withdrawn', label: 'Withdrawn', completed: true }
+      ];
+    }
+
     const steps = [
       { key: 'pending', label: 'Submitted', completed: true },
       { key: 'pending', label: 'Under Review', completed: report?.status !== 'pending' },
@@ -299,11 +365,13 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
 
   // 4. FINALLY: Calculate variables and render main content
   const steps = getStatusSteps();
-  const currentStepIndex = steps.findIndex(step => 
-    (report.status === 'pending' && step.label === 'Under Review') ||
-    (report.status === 'in_progress' && step.label === 'In Progress') ||
-    (report.status === 'resolved' && step.label === 'Resolved')
-  );
+  const currentStepIndex = report.status === 'withdrawn' 
+    ? 1  
+    : steps.findIndex(step => 
+      (report.status === 'pending' && step.label === 'Under Review') ||
+      (report.status === 'in_progress' && step.label === 'In Progress') ||
+      (report.status === 'resolved' && step.label === 'Resolved')
+    );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -360,6 +428,7 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
             </button>
 
             <button 
+              onClick={handleWithdrawClick}
               disabled={report.status !== 'pending'}
               className={`px-4 py-2 border rounded-lg font-semibold flex items-center gap-2 ${
                 report.status === 'pending' 
@@ -374,43 +443,76 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
         </div>
 
         {/* Status Timeline */}
-        <div className="bg-white rounded-lg shadow-sm p-8 mb-6">
-          <div className="flex items-center justify-between">
-            {steps.map((step, index) => (
-              <div key={index} className="flex items-center flex-1">
-                <div className="flex flex-col items-center">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    step.completed 
-                      ? 'bg-blue-600 text-white' 
-                      : index === currentStepIndex 
-                        ? 'border-4 border-blue-600 bg-white'
-                        : 'bg-gray-200 text-gray-400'
-                  }`}>
-                    {step.completed ? (
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    ) : index === currentStepIndex ? (
-                      <div className="w-4 h-4 bg-blue-600 rounded-full"></div>
-                    ) : (
-                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    )}
-                  </div>
-                  <p className={`mt-2 text-sm font-semibold ${
-                    step.completed || index === currentStepIndex ? 'text-blue-600' : 'text-gray-400'
-                  }`}>
-                    {step.label}
-                  </p>
+        {report.status === 'withdrawn' ? (
+          <div className="bg-white rounded-lg shadow-sm p-8 mb-6">
+            <div className="flex items-center justify-center gap-8">
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center bg-blue-600 text-white">
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
                 </div>
-                {index < steps.length - 1 && (
-                  <div className={`flex-1 h-1 mx-2 ${
-                    step.completed ? 'bg-blue-600' : 'bg-gray-200'
-                  }`}></div>
-                )}
+                <p className="mt-2 text-sm font-semibold text-blue-600">Submitted</p>
               </div>
-            ))}
+
+              <div className="w-32 h-1 bg-red-400"></div>
+
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center bg-red-600 text-white">
+                  <XCircle className="w-6 h-6" />
+                </div>
+                <p className="mt-2 text-sm font-semibold text-red-600">Withdrawn</p>
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">This report has been withdrawn and is no longer active.</p>
+              {report.withdraw_reason && (
+                <div className="mt-4 bg-gray-50 rounded-lg p-4 max-w-2xl mx-auto">
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Reason for Withdrawal</p>
+                  <p className="text-sm text-gray-700">{report.withdraw_reason}</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm p-8 mb-6">
+            <div className="flex items-center justify-between">
+              {steps.map((step, index) => (
+                <div key={index} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                      step.completed 
+                        ? 'bg-blue-600 text-white' 
+                        : index === currentStepIndex 
+                          ? 'border-4 border-blue-600 bg-white'
+                          : 'bg-gray-200 text-gray-400'
+                    }`}>
+                      {step.completed ? (
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : index === currentStepIndex ? (
+                        <div className="w-4 h-4 bg-blue-600 rounded-full"></div>
+                      ) : (
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                      )}
+                    </div>
+                    <p className={`mt-2 text-sm font-semibold ${
+                      step.completed || index === currentStepIndex ? 'text-blue-600' : 'text-gray-400'
+                    }`}>
+                      {step.label}
+                    </p>
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div className={`flex-1 h-1 mx-2 ${
+                      step.completed ? 'bg-blue-600' : 'bg-gray-200'
+                    }`}></div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Report Information */}
@@ -587,6 +689,91 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
           </div>
         </div>
       </div>
+
+      {/* Withdraw Modal */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <XCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Withdraw Report</h2>
+            </div>
+            
+            <p className="text-gray-600 mb-4">
+              This action cannot be undone. The report will be marked as withdrawn and removed from active reports.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Reason for withdrawal <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedReasonType}
+                onChange={(e) => {
+                  setSelectedReasonType(e.target.value);
+                  if (e.target.value !== 'other') {
+                    setCustomReason('');
+                  }
+                }}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select a reason...</option>
+                <option value="Issue already resolved">Issue already resolved</option>
+                <option value="Reported by mistake">Reported by mistake</option>
+                <option value="Duplicate report">Duplicate report</option>
+                <option value="Wrong location">Wrong location</option>
+                <option value="No longer an issue">No longer an issue</option>
+                <option value="Prefer to handle privately">Prefer to handle privately</option>
+                <option value="other">Other (please specify)</option>
+              </select>
+            </div>
+
+            {selectedReasonType === 'other' && (
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Please specify <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  placeholder="Please explain your reason for withdrawing..."
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                  maxLength={500}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {customReason.length}/500 characters
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleWithdrawCancel}
+                disabled={withdrawing}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleWithdrawConfirm}
+                disabled={withdrawing || !selectedReasonType || (selectedReasonType === 'other' && !customReason.trim())}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {withdrawing ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Withdrawing...
+                  </div>
+                ) : (
+                  'Confirm Withdrawal'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Image Modal */}
       {selectedImage && (
