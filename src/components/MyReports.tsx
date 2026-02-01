@@ -36,6 +36,17 @@ const MyReports = ({ onBack, onNavigateHome }: { onBack: () => void; onNavigateH
   const [currentPage, setCurrentPage] = useState(1);
   const reportsPerPage = 5;
 
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  
+  const dashboardAnnouncements = announcements
+  .filter(a => a.status === 'published')
+  .sort(
+    (a, b) =>
+      new Date(b.scheduled_date || b.created_at).getTime() -
+      new Date(a.scheduled_date || a.created_at).getTime()
+  )
+  .slice(0, 2); // show only 2 on dashboard
+
 
   useEffect(() => {
     checkUser();
@@ -86,6 +97,27 @@ const MyReports = ({ onBack, onNavigateHome }: { onBack: () => void; onNavigateH
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+  fetchAnnouncements();
+}, []);
+
+
+  const fetchAnnouncements = async () => {
+  try {
+    const { data, error } = await supabase
+      .from("announcements")
+      .select("*")
+      .eq("status", "published")
+      .order("scheduled_date", { ascending: false });
+
+    if (error) throw error;
+    setAnnouncements(data || []);
+  } catch (error) {
+    console.error("Error fetching announcements:", error);
+  }
+};
+
 
   const filterAndSortReports = () => {
     let filtered = [...reports];
@@ -493,35 +525,6 @@ if (selectedReportId) {
 
           {/* ========== RIGHT SIDEBAR ========== */}
           <aside className="col-span-3 space-y-4">
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-900">Local Announcements</h3>
-                <button className="text-blue-600 text-sm font-semibold hover:text-blue-700">
-                  See All
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <AlertTriangle className="w-5 h-5 text-red-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm">Water Main Repair</h4>
-                    <p className="text-xs text-gray-600">Disruption on North Blvd: Tomorrow 8am-4pm.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm">Town Hall Meeting</h4>
-                    <p className="text-xs text-gray-600">Join us this Thursday for the new park proposal.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div className="bg-blue-50 rounded-lg shadow-sm p-4">
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
