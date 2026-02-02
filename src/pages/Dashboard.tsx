@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { supabase } from "./supabaseClient";
-import FileReport from "./components/FileReport";
-import MyReports from "./components/MyReports";
+import { supabase } from "../supabaseClient";
+import FileReport from "../components/FileReport";
+import MyReports from "../components/MyReports";
 import { useRef } from "react";
 
 // Import all icons from lucide-react library
