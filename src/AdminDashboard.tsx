@@ -4,7 +4,9 @@ import { supabase } from "./supabaseClient";
 import AdminReportDetails from "./components/AdminReportDetails";
 import {
   LayoutDashboard, FileText, Bell, Users, Search, BellRing, LogOut, TrendingUp, Clock, CheckCircle, MapPin,
-  Plus, Minus, Locate, Pencil, Trash2, ChevronLeft, ChevronRight, Circle, X, AlertTriangle, Info
+  Plus, Minus, Locate, Pencil, Trash2, ChevronLeft, ChevronRight, Circle, X, AlertTriangle, Info,
+  View,
+  Eye
 } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -49,6 +51,45 @@ const AdminDashboard = () => {
 
   const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
 
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcementsView, setAnnouncementsView] = useState("list");
+  const [announcementForm, setAnnouncementForm] = useState({
+     title: '',
+      description: '',
+      category: 'general_news',
+      status: 'published',
+      scheduled_date: '',
+      location: '',
+      author: ''
+  });
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
+  const [announcementFilterCategory, setAnnouncementFilterCategory] = useState("all");
+  const [announcementFilterStatus, setAnnouncementFilterStatus] = useState("all");
+  const [announcementCurrentPage, setAnnouncementCurrentPage] = useState(1);
+  const announcementsPerPage = 10;
+
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const [viewingAnnouncementId, setViewingAnnouncementId] = useState<string | null>(null);
+  const [showLocationMap, setShowLocationMap] = useState(false);
+  const [mapMarker, setMapMarker] = useState<any>(null);
+  const announcementMapRef = useRef<HTMLDivElement>(null);
+  const announcementMapInstanceRef = useRef<any>(null);
+
+  // Add filtering logic (place this before the return statement):
+  const filteredAnnouncements = announcements.filter(announcement => {
+    const matchesCategory = announcementFilterCategory === "all" || announcement.category === announcementFilterCategory;
+    const matchesStatus = announcementFilterStatus === "all" || announcement.status === announcementFilterStatus;
+    return matchesCategory && matchesStatus;
+  });
+
+  // Calculate pagination
+  const indexOfLastAnnouncement = announcementCurrentPage * announcementsPerPage;
+  const indexOfFirstAnnouncement = indexOfLastAnnouncement - announcementsPerPage;
+  const currentAnnouncements = filteredAnnouncements.slice(indexOfFirstAnnouncement, indexOfLastAnnouncement);
+  const totalAnnouncementPages = Math.ceil(filteredAnnouncements.length / announcementsPerPage);
+  
 
   // Alert form state
   const [alertForm, setAlertForm] = useState({
@@ -99,6 +140,7 @@ const AdminDashboard = () => {
       await fetchReports();
       await fetchStats();
       await fetchAlerts();
+      await fetchAnnouncements(); 
       setLoading(false);
     };
     checkAdmin();
@@ -121,6 +163,12 @@ const AdminDashboard = () => {
     setAlertCurrentPage(1);
   }, [alertFilterSearch, alertFilterType, alertFilterStatus]);
 
+  useEffect(() => {
+  if (showLocationMap && announcementMapRef.current) {
+    setTimeout(() => initAnnouncementMap(), 100);
+  }
+}, [showLocationMap]);
+
   const fetchAlerts = async () => {
     setAlertsLoading(true);
     const { data, error } = await supabase
@@ -133,6 +181,17 @@ const AdminDashboard = () => {
     }
     setAlertsLoading(false);
   };
+
+  const fetchAnnouncements = async () => {
+  const { data, error } = await supabase
+    .from("announcements")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (!error && data) {
+    setAnnouncements(data);
+  }
+};
 
   // Auto-publish scheduled alerts when their time arrives
 useEffect(() => {
@@ -244,6 +303,7 @@ useEffect(() => {
     await fetchAlerts();
   }
 };
+
   const handleDeleteAlert = async (alertId: string) => {
     if (!window.confirm("Are you sure you want to delete this alert?")) return;
 
@@ -260,6 +320,57 @@ useEffect(() => {
       await fetchAlerts();
     }
   };
+
+  const handleUpdateAlert = async () => {
+  if (!alertForm.title || !alertForm.description || selectedAreas.length === 0) {
+    alert("Please fill in all required fields and select at least one affected area.");
+    return;
+  }
+
+  // Format scheduled_date properly
+  let scheduledDate = null;
+  if (alertForm.status === 'scheduled' && alertForm.scheduled_date) {
+    scheduledDate = new Date(alertForm.scheduled_date).toISOString();
+  }
+
+  const { error } = await supabase
+    .from("local_alerts")
+    .update({
+      urgency: alertForm.urgency,
+      category: alertForm.category,
+      title: alertForm.title,
+      description: alertForm.description,
+      estimated_resolution: alertForm.estimated_resolution,
+      required_action: alertForm.required_action,
+      affected_areas: selectedAreas,
+      status: alertForm.status,
+      scheduled_date: scheduledDate,  // Use the formatted date
+    })
+    .eq("id", editingAlertId);
+
+  if (error) {
+    console.error("Error updating alert:", error);
+    alert("Failed to update alert. Please try again.");
+  } else {
+    alert("Alert updated successfully!");
+    setAlertsView("list");
+    setEditingAlertId(null);
+    setAlertForm({
+      urgency: 'critical',
+      category: 'water_interruption',
+      title: '',
+      description: '',
+      estimated_resolution: '',
+      required_action: '',
+      affected_areas: [],
+      status: 'live',
+      scheduled_date: ''
+    });
+    setSelectedAreas([]);
+    await fetchAlerts();
+  }
+};
+
 
   const toggleArea = (area: string) => {
     setSelectedAreas(prev => 
@@ -389,55 +500,197 @@ const handleEditAlert = (alert: any) => {
   setAlertsView("create");
 };
 
-const handleUpdateAlert = async () => {
-  if (!alertForm.title || !alertForm.description || selectedAreas.length === 0) {
-    alert("Please fill in all required fields and select at least one affected area.");
+
+
+
+const handleCreateAnnouncement = async () => {
+  if (!announcementForm.title || !announcementForm.description) {
+    alert("Please fill in all required fields.");
     return;
   }
 
-  // Format scheduled_date properly
-  let scheduledDate = null;
-  if (alertForm.status === 'scheduled' && alertForm.scheduled_date) {
-    scheduledDate = new Date(alertForm.scheduled_date).toISOString();
+  // Validate scheduled date if status is scheduled
+  if (announcementForm.status === 'scheduled' && !announcementForm.scheduled_date) {
+    alert("Please select a date and time for the scheduled announcement.");
+    return;
   }
+
+  // Use scheduled_date if provided, otherwise use current time
+  let scheduledDate = announcementForm.scheduled_date 
+    ? new Date(announcementForm.scheduled_date).toISOString()
+    : new Date().toISOString();
 
   const { error } = await supabase
-    .from("local_alerts")
+    .from("announcements")
+    .insert([{
+      title: announcementForm.title,
+      description: announcementForm.description,
+      category: announcementForm.category,
+      status: announcementForm.status,
+      scheduled_date: scheduledDate,
+      location: announcementForm.location,
+      author: user.full_name,
+      created_by: user.id
+    }]);
+
+ if (error) {
+  console.error("Error creating announcement:", error);
+  alert("Failed to create announcement.");
+} else {
+  alert("Announcement created successfully!");
+  setAnnouncementsView("list");
+  
+  // Clean up map
+  setShowLocationMap(false);
+  if (mapMarker && announcementMapInstanceRef.current) {
+    announcementMapInstanceRef.current.removeLayer(mapMarker);
+    setMapMarker(null);
+  }
+  if (announcementMapInstanceRef.current) {
+    announcementMapInstanceRef.current.remove();
+    announcementMapInstanceRef.current = null;
+  }
+  
+  setAnnouncementForm({
+    title: '',
+    description: '',
+    category: 'general_news',
+    status: 'published',
+    scheduled_date: '',
+    location: '', 
+    author: ''
+  });
+  await fetchAnnouncements();
+}
+};
+
+
+const handleEditAnnouncement = (announcement: any) => {
+  let scheduledDateLocal = '';
+  if (announcement.scheduled_date) {
+const date = new Date(announcement.scheduled_date);
+
+scheduledDateLocal = `${date.getFullYear()}-${String(
+  date.getMonth() + 1
+).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(
+  date.getHours()
+).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }
+
+  setAnnouncementForm({
+    title: announcement.title,
+    description: announcement.description,
+    category: announcement.category,
+    status: announcement.status,
+    scheduled_date: scheduledDateLocal,
+     location: announcement.location || '',
+    author: announcement.author
+  });
+  setEditingAnnouncementId(announcement.id);
+  setAnnouncementsView("create");
+};
+
+const handleUpdateAnnouncement = async () => {
+  if (!announcementForm.title || !announcementForm.description) {
+    alert("Please fill in all required fields.");
+    return;
+  }
+
+  // Use scheduled_date if provided, otherwise keep the original
+  let scheduledDate = announcementForm.scheduled_date 
+    ? new Date(announcementForm.scheduled_date).toISOString()
+    : null;
+
+  const { error } = await supabase
+    .from("announcements")
     .update({
-      urgency: alertForm.urgency,
-      category: alertForm.category,
-      title: alertForm.title,
-      description: alertForm.description,
-      estimated_resolution: alertForm.estimated_resolution,
-      required_action: alertForm.required_action,
-      affected_areas: selectedAreas,
-      status: alertForm.status,
-      scheduled_date: scheduledDate,  // Use the formatted date
+      title: announcementForm.title,
+      description: announcementForm.description,
+      category: announcementForm.category,
+      status: announcementForm.status,
+      scheduled_date: scheduledDate,
+      location: announcementForm.location, 
     })
-    .eq("id", editingAlertId);
+    .eq("id", editingAnnouncementId);
 
   if (error) {
-    console.error("Error updating alert:", error);
-    alert("Failed to update alert. Please try again.");
+    console.error("Error updating announcement:", error);
+    alert("Failed to update announcement.");
   } else {
-    alert("Alert updated successfully!");
-    setAlertsView("list");
-    setEditingAlertId(null);
-    setAlertForm({
-      urgency: 'critical',
-      category: 'water_interruption',
+    alert("Announcement updated successfully!");
+    setAnnouncementsView("list");
+    setEditingAnnouncementId(null);
+    setAnnouncementForm({
       title: '',
       description: '',
-      estimated_resolution: '',
-      required_action: '',
-      affected_areas: [],
-      status: 'live',
-      scheduled_date: ''
+      category: 'general_news',
+      status: 'published',
+      scheduled_date: '',
+       location: '', 
+      author: ''
     });
-    setSelectedAreas([]);
-    await fetchAlerts();
+    await fetchAnnouncements();
+  }if (error) {
+  console.error("Error creating announcement:", error);
+  alert("Failed to create announcement.");
+} else {
+  alert("Announcement created successfully!");
+  setAnnouncementsView("list");
+  
+  // Clean up map
+  setShowLocationMap(false);
+  if (mapMarker && announcementMapInstanceRef.current) {
+    announcementMapInstanceRef.current.removeLayer(mapMarker);
+    setMapMarker(null);
+  }
+  if (announcementMapInstanceRef.current) {
+    announcementMapInstanceRef.current.remove();
+    announcementMapInstanceRef.current = null;
+  }
+  
+  setAnnouncementForm({
+    title: '',
+    description: '',
+    category: 'general_news',
+    status: 'published',
+    scheduled_date: '',
+    location: '', 
+    author: ''
+  });
+  await fetchAnnouncements();
+}
+};
+
+const handleDeleteAnnouncement = async (announcementId: string) => {
+  if (!window.confirm("Are you sure you want to delete this announcement?")) return;
+
+  const { error } = await supabase
+    .from("announcements")
+    .delete()
+    .eq("id", announcementId);
+
+  if (error) {
+    console.error("Error deleting announcement:", error);
+    alert("Failed to delete announcement.");
+  } else {
+    alert("Announcement deleted successfully!");
+    await fetchAnnouncements();
   }
 };
+
+const getCategoryBadge = (category: string) => {
+  const badges: { [key: string]: { bg: string, text: string, label: string } } = {
+    council_meeting: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'COUNCIL MEETING' },
+    utility_update: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'UTILITY UPDATE' },
+    general_news: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'GENERAL NEWS' },
+    event: { bg: 'bg-green-100', text: 'text-green-700', label: 'EVENT' },
+    maintenance: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'MAINTENANCE' }
+  };
+  
+  const badge = badges[category] || badges.general_news;
+  return <span className={`px-3 py-1 ${badge.bg} ${badge.text} rounded-full text-xs font-medium`}>{badge.label}</span>;
+};
+
   const initMap = () => {
     if (!document.getElementById('leaflet-css')) {
       const link = document.createElement('link');
@@ -460,6 +713,126 @@ const handleUpdateAlert = async () => {
       renderMap();
     }
   };
+
+  const initAnnouncementMap = () => {
+  if (!announcementMapRef.current) return;
+  
+  const L = (window as any).L;
+  if (!L) {
+    // Load Leaflet if not already loaded
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => renderAnnouncementMap();
+    document.head.appendChild(script);
+  } else {
+    renderAnnouncementMap();
+  }
+};
+
+const renderAnnouncementMap = () => {
+  if (!announcementMapRef.current) return;
+  
+  const L = (window as any).L;
+  if (!L) return;
+
+  if (announcementMapInstanceRef.current) {
+    announcementMapInstanceRef.current.remove();
+  }
+
+  // Clear and setup container
+  announcementMapRef.current.innerHTML = '<div id="announcement-map-container" style="width: 100%; height: 100%;"></div>';
+
+  // Wait a bit for DOM to be ready
+  setTimeout(() => {
+    // Fix Leaflet default icon issue
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
+
+    const map = L.map('announcement-map-container').setView([14.8815, 120.8671], 13);
+    announcementMapInstanceRef.current = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Create initial marker (can be null to start without one)
+    let marker: any = null;
+
+    // Click on map to place/move marker
+    map.on('click', function(e: any) {
+      const { lat, lng } = e.latlng;
+      
+      // Remove old marker if exists
+      if (marker) {
+        map.removeLayer(marker);
+      }
+      
+      // Create new marker at clicked position
+      marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+      setMapMarker(marker);
+      
+      // Enable marker dragging
+      marker.on('dragend', function(e: any) {
+        const position = e.target.getLatLng();
+        reverseGeocodeForAnnouncement(position.lat, position.lng);
+      });
+      
+      // Reverse geocode to get address
+      reverseGeocodeForAnnouncement(lat, lng);
+    });
+
+    setTimeout(() => map.invalidateSize(), 100);
+  }, 50);
+};
+
+// Add reverse geocoding function for announcements
+const reverseGeocodeForAnnouncement = async (lat: number, lng: number) => {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+    );
+    const data = await res.json();
+    if (data.display_name) {
+      setAnnouncementForm({...announcementForm, location: data.display_name});
+    }
+  } catch (error) {
+    console.error("Reverse geocoding failed", error);
+    setAnnouncementForm({...announcementForm, location: `${lat.toFixed(6)}, ${lng.toFixed(6)}`});
+  }
+};
+
+const handleToggleAnnouncementStatus = async (announcementId: string, currentStatus: string) => {
+  const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+  
+  const { error } = await supabase
+    .from("announcements")
+    .update({ status: newStatus })
+    .eq("id", announcementId);
+
+  if (error) {
+    console.error("Error updating announcement status:", error);
+    alert("Failed to update status. Please try again.");
+  } else {
+    const message = newStatus === 'published' 
+      ? "Announcement published successfully!" 
+      : "Announcement saved as draft.";
+    alert(message);
+    await fetchAnnouncements();
+  }
+};
+
 
   const renderMap = async () => {
     if (!mapRef.current) return;
@@ -634,6 +1007,35 @@ const handleUpdateAlert = async () => {
     };
   };
 
+  const getDaysInMonth = (date: Date) => {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startingDayOfWeek = firstDay.getDay();
+  
+  return { daysInMonth, startingDayOfWeek };
+};
+
+const goToNextMonth = () => {
+  setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+};
+
+const goToPreviousMonth = () => {
+  setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+};
+
+const getAnnouncementsForDate = (date: Date) => {
+  return announcements.filter(ann => {
+    if (ann.status !== 'published') return false;
+    const annDate = new Date(ann.scheduled_date || ann.created_at);
+    return annDate.getDate() === date.getDate() &&
+           annDate.getMonth() === date.getMonth() &&
+           annDate.getFullYear() === date.getFullYear();
+  });
+};
+
   const priorityCounts = {
     high: reports.filter(r => r.priority === 'high').length,
     medium: reports.filter(r => r.priority === 'medium').length,
@@ -714,6 +1116,15 @@ const handleUpdateAlert = async () => {
           >
             <Bell className="w-5 h-5" />
             <span className="font-medium">Local Alerts</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("announcements")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 ${
+              activeTab === "announcements" ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <Bell className="w-5 h-5" />
+            <span className="font-medium">Announcements</span>
           </button>
           <button
             onClick={() => setActiveTab("users")}
@@ -1434,15 +1845,16 @@ const handleUpdateAlert = async () => {
                     </div>
 
                     {alertForm.status === 'scheduled' && (
-                      <div className="mt-4">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Schedule Date & Time</label>
-                        <input
-                          type="datetime-local"
-                          value={alertForm.scheduled_date}
-                          onChange={(e) => setAlertForm({...alertForm, scheduled_date: e.target.value})}
-                          className="px-3 py-2 border rounded-lg text-sm"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Event Date & Time</label>
+                      <input
+                        type="datetime-local"
+                        value={announcementForm.scheduled_date}
+                        onChange={(e) => setAnnouncementForm({...announcementForm, scheduled_date: e.target.value})}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">This will appear on the community calendar</p>
+                    </div>
                     )}
                   </div>
 
@@ -1475,6 +1887,632 @@ const handleUpdateAlert = async () => {
             )}
           </main>
         )}
+
+        
+        {/* Announcements Tab */}
+            {activeTab === "announcements" && (
+              <main className="flex-1 overflow-auto p-8">
+                <div className="flex gap-6">
+                  {/* Main Content */}
+                  <div className="flex-1">
+                    {announcementsView === "list" && (
+                      <>
+                        <div className="flex items-center justify-between mb-6">
+                          <div>
+                            <h1 className="text-2xl font-bold text-gray-900">Published Announcements</h1>
+                            <p className="text-sm text-gray-500">Create, edit and manage community-wide broadcasts.</p>
+                          </div>
+                          <button
+                            onClick={() => setAnnouncementsView("create")}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Create New
+                          </button>
+                        </div>
+
+                      <div className="bg-white rounded-xl shadow border p-4 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <select
+                            value={announcementFilterCategory}
+                            onChange={(e) => {
+                              setAnnouncementFilterCategory(e.target.value);
+                              setAnnouncementCurrentPage(1); 
+                            }}
+                            className="px-3 py-2 border rounded-lg text-sm"
+                          >
+                            <option value="all">All Categories</option>
+                            <option value="general_news">General News</option>
+                            <option value="council_meeting">Council Meeting</option>
+                            <option value="utility_update">Utility Update</option>
+                            <option value="event">Event</option>
+                            <option value="maintenance">Maintenance</option>
+                          </select>
+                          <select
+                            value={announcementFilterStatus}
+                            onChange={(e) => {
+                              setAnnouncementFilterStatus(e.target.value);
+                              setAnnouncementCurrentPage(1); 
+                            }}
+                            className="px-3 py-2 border rounded-lg text-sm"
+                          >
+                            <option value="all">All Statuses</option>
+                            <option value="published">Published</option>
+                            <option value="draft">Draft</option>
+                          </select>
+                        </div>
+                      </div>
+
+                    <div className="bg-white rounded-xl shadow border overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase">Announcement Details</th>
+                            <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase">Category</th>
+                            <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase">Author</th>
+                            <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                            <th className="p-4 text-center text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                          </tr>
+                        </thead>
+                     <tbody>
+                        {currentAnnouncements.map(announcement => {
+                          const dateTime = formatDateTime(announcement.created_at);
+                          return (
+                            <tr key={announcement.id} className="border-b hover:bg-gray-50">
+                              <td className="p-4">
+                                <div className="font-semibold text-gray-900">{announcement.title}</div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Published {dateTime.date} • ID: ANN-{announcement.id.slice(0, 4)}
+                                </div>
+                              </td>
+                              <td className="p-4">{getCategoryBadge(announcement.category)}</td>
+                              <td className="p-4 text-sm text-gray-700">{announcement.author || 'Admin'}</td>
+                              <td className="p-4">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={announcement.status === 'published'}
+                                    onChange={() => handleToggleAnnouncementStatus(announcement.id, announcement.status)}
+                                    className="sr-only peer" 
+                                  />
+                                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                                <div className={`text-xs font-medium mt-1 ${announcement.status === 'published' ? 'text-blue-600' : 'text-gray-600'}`}>
+                                  {announcement.status === 'published' ? 'PUBLISHED' : 'DRAFT'}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex justify-center gap-2">
+                                  <button 
+                                    onClick={() => setViewingAnnouncementId(announcement.id)}
+                                    className="p-2 rounded hover:bg-blue-50 text-blue-600"
+                                    title="View"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteAnnouncement(announcement.id)}
+                                    className="p-2 rounded hover:bg-red-50 text-red-600"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      </table>
+
+                      <div className="flex items-center justify-between px-6 py-4 border-t">
+                        <p className="text-sm text-gray-600">
+                          Showing <span className="font-medium">{indexOfFirstAnnouncement + 1}</span> to{" "}
+                          <span className="font-medium">{Math.min(indexOfLastAnnouncement, filteredAnnouncements.length)}</span> of{" "}
+                          <span className="font-medium">{filteredAnnouncements.length}</span> announcements
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setAnnouncementCurrentPage(p => Math.max(p - 1, 1))}
+                            disabled={announcementCurrentPage === 1}
+                            className="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            Previous
+                          </button>
+                          {Array.from({ length: totalAnnouncementPages }, (_, i) => i + 1).map(page => (
+                            <button
+                              key={page}
+                              onClick={() => setAnnouncementCurrentPage(page)}
+                              className={`px-3 py-1 rounded text-sm ${
+                                announcementCurrentPage === page 
+                                  ? "bg-blue-600 text-white" 
+                                  : "border hover:bg-gray-50"
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => setAnnouncementCurrentPage(p => Math.min(p + 1, totalAnnouncementPages))}
+                            disabled={announcementCurrentPage === totalAnnouncementPages}
+                            className="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+            {announcementsView === "create" && (
+              <>
+                <div className="flex items-center gap-3 mb-6">
+                  <button
+                    onClick={() => {
+                      setAnnouncementsView("list");
+                      setEditingAnnouncementId(null);
+                      setShowLocationMap(false);
+
+                      // Clean up map
+                    if (mapMarker && announcementMapInstanceRef.current) {
+                      announcementMapInstanceRef.current.removeLayer(mapMarker);
+                      setMapMarker(null);
+                    }
+                    if (announcementMapInstanceRef.current) {
+                      announcementMapInstanceRef.current.remove();
+                      announcementMapInstanceRef.current = null;
+                    }
+                  }}
+              
+                    className="p-2 rounded-lg border hover:bg-gray-50"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      {editingAnnouncementId ? 'Edit Announcement' : 'Create New Announcement'}
+                    </h1>
+                    <p className="text-sm text-gray-500">Broadcast information to the community</p>
+                  </div>
+                </div>
+
+                <div className="max-w-3xl space-y-6">
+                  <div className="bg-white rounded-xl shadow border p-6 space-y-4">
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
+                      <input
+                        value={announcementForm.title}
+                        onChange={(e) => setAnnouncementForm({...announcementForm, title: e.target.value})}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        placeholder="Enter announcement title"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                      <textarea
+                        value={announcementForm.description}
+                        onChange={(e) => setAnnouncementForm({...announcementForm, description: e.target.value})}
+                        rows={4}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        placeholder="Enter announcement details"
+                      />
+                    </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                        <div className="flex gap-2">
+                          <input
+                            value={announcementForm.location}
+                            onChange={(e) => {
+                              setAnnouncementForm({...announcementForm, location: e.target.value});
+                            }}
+                            className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                            placeholder="e.g., City Hall Conference Room B, West Park Main Entry"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowLocationMap(!showLocationMap);
+                              if (!showLocationMap) {
+                                // Wait for map to show, then render it
+                                setTimeout(() => {
+                                  if (announcementMapRef.current) {
+                                    renderAnnouncementMap();
+                                  }
+                                }, 100);
+                              }
+                            }}
+                            className={`px-4 py-2 border rounded-lg flex items-center gap-2 ${
+                              showLocationMap ? 'bg-blue-50 border-blue-500 text-blue-600' : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <MapPin className="w-4 h-4" />
+                            {showLocationMap ? 'Hide Map' : 'Pick on Map'}
+                          </button>
+                        </div>
+                        
+                        <p className="text-xs text-gray-500 mt-1">
+                          {showLocationMap 
+                            ? 'Click anywhere on the map or drag the marker to select the event location' 
+                            : 'Type the location or use the map picker'}
+                        </p>
+                            
+                          {showLocationMap && (
+                        <div className="mt-3 border rounded-lg overflow-hidden relative">
+                          {/* Drop Pin Indicator */}
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-12 z-10 flex flex-col items-center pointer-events-none">
+                            <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg mb-1">
+                              CLICK TO PIN LOCATION
+                            </div>
+                            <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                            </svg>
+                          </div>
+
+                          {/* Map Container */}
+                          <div ref={announcementMapRef} className="w-full h-80"></div>
+                          
+                          {/* Map Footer */}
+                          <div className="bg-gray-50 p-3 border-t flex items-center justify-between">
+                            <span className="text-xs text-gray-600">
+                              {mapMarker ? '✓ Location selected - Drag marker to adjust' : 'Click anywhere on the map to select location'}
+                            </span>
+                            {mapMarker && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (announcementMapInstanceRef.current && mapMarker) {
+                                    announcementMapInstanceRef.current.removeLayer(mapMarker);
+                                    setMapMarker(null);
+                                    setAnnouncementForm({...announcementForm, location: ''});
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-700 font-medium text-xs"
+                              >
+                                Clear Location
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                          <select
+                            value={announcementForm.category}
+                            onChange={(e) => setAnnouncementForm({...announcementForm, category: e.target.value})}
+                            className="w-full px-3 py-2 border rounded-lg"
+                          >
+                            <option value="general_news">General News</option>
+                            <option value="council_meeting">Council Meeting</option>
+                            <option value="utility_update">Utility Update</option>
+                            <option value="event">Event</option>
+                            <option value="maintenance">Maintenance</option>
+                          </select>
+                        </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Event Date & Time {announcementForm.status === 'scheduled' && '*'}
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={announcementForm.scheduled_date}
+                      onChange={(e) => setAnnouncementForm({...announcementForm, scheduled_date: e.target.value})}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      min={new Date().toISOString().slice(0, 16)} // Prevents selecting past dates
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {announcementForm.scheduled_date 
+                        ? `This event will appear on ${new Date(announcementForm.scheduled_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} at ${new Date(announcementForm.scheduled_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
+                        : 'Select when this event will take place (appears on community calendar)'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Publishing Status</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          checked={announcementForm.status === 'published'}
+                          onChange={() => setAnnouncementForm({...announcementForm, status: 'published'})}
+                        />
+                        <span>Publish Now</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          checked={announcementForm.status === 'draft'}
+                          onChange={() => setAnnouncementForm({...announcementForm, status: 'draft'})}
+                        />
+                        <span>Save as Draft</span>
+                      </label>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {announcementForm.status === 'published' && 'Announcement will be visible immediately'}
+                      {announcementForm.status === 'draft' && 'Save without publishing'}
+                    </p>
+                  </div>
+
+              </div>
+
+                  <div className="flex justify-between">
+                    <button
+                      onClick={() => {
+                        setAnnouncementsView("list");
+                        setEditingAnnouncementId(null);
+                      }}
+                      className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={editingAnnouncementId ? handleUpdateAnnouncement : handleCreateAnnouncement}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      {editingAnnouncementId ? 'Update' : 'Create'} Announcement
+                    </button>
+                  </div>
+            </div>
+          </>
+        )}
+      </div>
+
+        {/* Calendar Sidebar */}
+        <div className="w-80">
+          <div className="bg-white rounded-xl shadow border p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-gray-900">
+                  {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </h3>
+                <p className="text-xs text-gray-500">COMMUNITY CALENDAR</p>
+              </div>
+              <div className="flex gap-1">
+                <button 
+                  onClick={goToPreviousMonth}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={goToNextMonth}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Mini Calendar */}
+            <div className="grid grid-cols-7 gap-1 mb-4">
+              {['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'].map(day => (
+                <div key={day} className="text-center text-xs font-medium text-gray-400 py-2">{day}</div>
+              ))}
+              
+              {(() => {
+                const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
+                const days = [];
+                
+                // Empty cells for days before month starts
+                for (let i = 0; i < startingDayOfWeek; i++) {
+                  days.push(<div key={`empty-${i}`} className="text-center text-sm py-2"></div>);
+                }
+                
+                // Actual days of the month
+                for (let day = 1; day <= daysInMonth; day++) {
+                  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                  const isToday = date.toDateString() === new Date().toDateString();
+                  const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+                  const hasEvents = getAnnouncementsForDate(date).length > 0;
+                  
+                  days.push(
+                    <button
+                      key={day}
+                      onClick={() => setSelectedDate(date)}
+                      className={`text-center text-sm py-2 rounded hover:bg-gray-100 relative transition-colors ${
+                        isToday ? 'bg-blue-600 text-white hover:bg-blue-700' : 
+                        isSelected ? 'bg-blue-100 text-blue-600 ring-2 ring-blue-600' :
+                        'text-gray-700'
+                      }`}
+                    >
+                      {day}
+                      {hasEvents && !isToday && (
+                        <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-600 rounded-full"></div>
+                      )}
+                    </button>
+                  );
+                }
+                
+                return days;
+              })()}
+            </div>
+
+          <div className="border-t pt-4">
+            <div className="mb-3">
+              <h4 className="font-semibold text-sm text-gray-900">
+                {selectedDate 
+                  ? `Events on ${selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+                  : 'UPCOMING EVENTS'
+                }
+              </h4>
+              {selectedDate && (
+                <button 
+                  onClick={() => setSelectedDate(null)}
+                  className="text-xs text-blue-600 hover:underline mt-1"
+                >
+                  View all events
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {(() => {
+                const eventsToShow = selectedDate 
+                  ? getAnnouncementsForDate(selectedDate)
+                  : announcements
+                      .filter(ann => ann.status === 'published')
+                      .sort((a, b) => {
+                        const dateA = new Date(a.scheduled_date || a.created_at).getTime();
+                        const dateB = new Date(b.scheduled_date || b.created_at).getTime();
+                        return dateA - dateB;
+                      })
+                      .slice(0, 3);
+
+                if (eventsToShow.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-400 text-sm">
+                      {selectedDate 
+                        ? 'No events scheduled for this date'
+                        : 'No scheduled events'
+                      }
+                    </div>
+                  );
+                }
+
+              return eventsToShow.map(announcement => {
+                const eventDate = new Date(announcement.scheduled_date || announcement.created_at);
+                const month = eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+                const day = eventDate.getDate();
+                const time = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                
+                  return (
+                    <div key={announcement.id} className="flex gap-3">
+                      <div className="text-center bg-blue-600 text-white rounded-lg p-2 w-12 h-12 flex flex-col items-center justify-center flex-shrink-0">
+                        <div className="text-xs font-medium">{month}</div>
+                        <div className="text-lg font-bold">{day}</div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{announcement.title}</div>
+                        <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                          <Clock className="w-3 h-3 flex-shrink-0" /> {time}
+                        </div>
+                        {announcement.location && (
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3 flex-shrink-0" /> 
+                            <span className="truncate">{announcement.location}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {!selectedDate && announcements.filter(ann => ann.status === 'published').length > 5 && (
+              <button className="w-full mt-4 text-center text-sm text-blue-600 hover:underline">
+                View Full Schedule →
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* View Announcement Modal */}
+          {viewingAnnouncementId && (() => {
+            const announcement = announcements.find(a => a.id === viewingAnnouncementId);
+            if (!announcement) return null;
+            
+            const dateTime = formatDateTime(announcement.scheduled_date || announcement.created_at);
+            
+            return (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-white">
+                    <h2 className="text-xl font-bold text-gray-900">Announcement Details</h2>
+                    <button
+                      onClick={() => setViewingAnnouncementId(null)}
+                      className="p-2 hover:bg-gray-100 rounded-lg"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        {getCategoryBadge(announcement.category)}
+                        {getAlertStatusBadge(announcement.status)}
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900">{announcement.title}</h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 py-4 border-y">
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">Date</div>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          {dateTime.date} at {dateTime.time}
+                        </div>
+                      </div>
+                      {announcement.location && (
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Location</div>
+                          <div className="flex items-center gap-2 text-sm font-medium">
+                            <MapPin className="w-4 h-4 text-gray-400" />
+                            {announcement.location}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-gray-500 mb-2">Description</div>
+                      <p className="text-gray-700 whitespace-pre-wrap">{announcement.description}</p>
+                    </div>
+
+                    <div className="pt-4 border-t">
+                      <div className="text-xs text-gray-500">
+                        Posted by {announcement.author || 'Admin'} on {dateTime.date}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 border-t bg-gray-50 flex justify-between">
+                    <button
+                      onClick={() => setViewingAnnouncementId(null)}
+                      className="px-4 py-2 border rounded-lg hover:bg-white"
+                    >
+                      Close
+                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setViewingAnnouncementId(null);
+                          handleEditAnnouncement(announcement);
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                      >
+                        <Pencil className="w-4 h-4" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Delete this announcement?')) {
+                            handleDeleteAnnouncement(announcement.id);
+                            setViewingAnnouncementId(null);
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+  </main>
+)}
+        
       </div>
     </div>
   );

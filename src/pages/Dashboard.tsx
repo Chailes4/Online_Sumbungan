@@ -11,7 +11,7 @@ import {
   ThumbsUp, ThumbsDown, Share2, LogOut, Calendar,
   Activity, CheckCircle, Clock, Megaphone, Trees, Send, Flame,
   ShieldCheck, Ambulance, Building2, Phone, Backpack, UserRound, Users,
-   ChevronDown, Info
+   ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight, X
 } from "lucide-react";
 
 // TypeScript interface defining the structure of a Post object
@@ -118,6 +118,43 @@ const [activeTab, setActiveTab] = useState<'feed' | 'alerts' | 'announcements' |
 const [alerts, setAlerts] = useState<any[]>([]);
 const [alertsLoading, setAlertsLoading] = useState(true);
 
+const [announcements, setAnnouncements] = useState<any[]>([]);
+const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+const [currentMonth, setCurrentMonth] = useState(new Date());
+const [viewingAnnouncementId, setViewingAnnouncementId] = useState<string | null>(null);
+
+const getRelativeTime = (dateString: string) => {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+
+  const minutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(diffMs / 3600000);
+  const days = Math.floor(diffMs / 86400000);
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+  if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+  if (hours < 48) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+
+  return null; // fallback to full date
+};
+
+const INITIAL_COUNT = 3;
+const LOAD_STEP = 3;
+const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
+
+const dashboardAnnouncements = announcements
+  .filter(a => a.status === 'published')
+  .sort(
+    (a, b) =>
+      new Date(b.scheduled_date || b.created_at).getTime() -
+      new Date(a.scheduled_date || a.created_at).getTime()
+  )
+  .slice(0, 2); // show only 2 on dashboard
+
 
     // ========== LIFECYCLE HOOKS ==========
   // Run once when component mounts
@@ -150,6 +187,32 @@ useEffect(() => {
     subscription.unsubscribe();
   };
 }, []);
+
+
+useEffect(() => {
+  fetchAnnouncements();
+  
+  // Subscribe to real-time updates
+  const subscription = supabase
+    .channel('announcements_changes')
+    .on('postgres_changes', 
+      { event: '*', schema: 'public', table: 'announcements' },
+      () => {
+        fetchAnnouncements();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
+
+useEffect(() => {
+  setVisibleCount(3);
+}, [selectedDate]);
+
+
 
   // ========== USER AUTHENTICATION ==========
   // Check current authenticated user and fetch their profile data
@@ -990,6 +1053,22 @@ const fetchAlerts = async () => {
   }
   setAlertsLoading(false);
 };
+
+const fetchAnnouncements = async () => {
+  setAnnouncementsLoading(true);
+  const { data, error } = await supabase
+    .from("announcements")
+    .select("*")
+    .eq("status", "published")
+    .order("scheduled_date", { ascending: false });
+
+  if (!error && data) {
+    setAnnouncements(data);
+  }
+  setAnnouncementsLoading(false);
+};
+
+
 const getCategoryLabel = (category: string) => {
   const labels: { [key: string]: string } = {
     water_interruption: 'Water Interruption',
@@ -1050,6 +1129,67 @@ const formatTimeAgo = (dateString: string) => {
     return `${days}d ago`;
   }
 };
+const getDaysInMonth = (date: Date) => {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  
+  return {
+    daysInMonth: lastDay.getDate(),
+    startingDayOfWeek: firstDay.getDay()
+  };
+};
+
+const getAnnouncementsForDate = (date: Date) => {
+  return announcements.filter(ann => {
+    const annDate = new Date(ann.scheduled_date || ann.created_at);
+    return annDate.toDateString() === date.toDateString();
+  });
+};
+
+const goToPreviousMonth = () => {
+  setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+};
+
+const goToNextMonth = () => {
+  setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+};
+
+const getCategoryBadge = (category: string) => {
+  const badges: { [key: string]: { bg: string; text: string } } = {
+    council_meeting: { bg: 'bg-blue-50', text: 'text-blue-600' },
+    utility_update: { bg: 'bg-gray-100', text: 'text-gray-600' },
+    general_news: { bg: 'bg-green-50', text: 'text-green-600' },
+    event: { bg: 'bg-purple-50', text: 'text-purple-600' },
+    maintenance: { bg: 'bg-orange-50', text: 'text-orange-600' }
+  };
+  
+  const badge = badges[category] || { bg: 'bg-gray-100', text: 'text-gray-600' };
+  const labels: { [key: string]: string } = {
+    general_news: 'General News',
+    council_meeting: 'Council Meeting',
+    utility_update: 'Utility Update',
+    event: 'Event',
+    maintenance: 'Maintenance'
+  };
+  const label = labels[category] || category;
+  
+  return (
+    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${badge.bg} ${badge.text} uppercase`}>
+      {label}
+    </span>
+  );
+};
+
+const formatDateTime = (dateString: string) => {
+  const date = new Date(dateString);
+  return {
+    date: date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+    time: date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  };
+};
+
 
 // ========== TIME FORMATTING ==========
   // Convert timestamp to human-readable "time ago" format
@@ -2163,7 +2303,7 @@ if (showMyReports) {
 )}
 
 
-  {activeTab === "announcements" && (
+{activeTab === "announcements" && (
   <div className="space-y-6">
 
     {/* ===== HEADER ===== */}
@@ -2174,85 +2314,194 @@ if (showMyReports) {
           The latest official updates, policies, and press releases for our community.
         </p>
       </div>
-
-      <div className="flex gap-2">
-        <button className="px-3 py-1.5 text-xs font-semibold bg-white border rounded-md">
-          Latest
-        </button>
-        <button className="px-3 py-1.5 text-xs font-semibold text-gray-500 border rounded-md">
-          Archived
-        </button>
-      </div>
     </div>
 
-    {/* ===== ANNOUNCEMENT CARD ===== */}
-    <div className="bg-white rounded-xl shadow-sm border p-6 space-y-4">
-
-      {/* meta */}
-      <div className="flex items-center gap-2 text-xs text-gray-500">
-        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 font-semibold">
-          COUNCIL MEETING
-        </span>
-        <span>•</span>
-        <span>4 hours ago</span>
+    {/* ===== LOADING STATE ===== */}
+    {announcementsLoading && (
+      <div className="text-center py-12">
+        <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm text-gray-500 mt-2">Loading announcements...</p>
       </div>
+    )}
 
-      {/* title */}
-      <h3 className="text-lg font-bold">
-        Proposed Development: West Side Green Space Expansion
-      </h3>
-
-      {/* body */}
-      <p className="text-sm text-gray-600">
-        The Municipal Planning Committee has released the preliminary designs
-        for the revitalization of the West Side Park. This $2.4M project aims
-        to increase community engagement through new sports facilities and
-        sustainable landscaping.
-      </p>
-
-      {/* footer */}
-      <div className="flex flex-wrap gap-6 pt-3 text-xs text-gray-500">
-        <div className="flex items-center gap-1">
-          <MapPin className="w-4 h-4" />
-          City Hall, Auditorium A
+    {/* ===== EMPTY STATE ===== */}
+    {!announcementsLoading && announcements.length === 0 && (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Bell className="w-8 h-8 text-blue-600" />
         </div>
-        <div className="flex items-center gap-1">
-          <Clock className="w-4 h-4" />
-          Oct 24, 2024 • 18:30 PM
+        <h3 className="text-lg font-bold text-gray-900 mb-2">No Announcements Yet</h3>
+        <p className="text-sm text-gray-500">
+          Check back later for community updates and announcements.
+        </p>
+      </div>
+    )}
+
+    {/* ===== ANNOUNCEMENTS LIST ===== */}
+    {!announcementsLoading &&
+      announcements.map((announcement) => {
+        const postedDate = formatDateTime(announcement.created_at);
+        const eventDate = announcement.scheduled_date
+          ? formatDateTime(announcement.scheduled_date)
+          : null;
+
+        return (
+          <div
+            key={announcement.id}
+            className="bg-white rounded-xl shadow-sm border p-6 space-y-4"
+          >
+            {/* META (DATE POSTED) */}
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              {getCategoryBadge(announcement.category)}
+              <span>•</span>
+            <span>
+              {" "}
+              {getRelativeTime(announcement.created_at) ? (
+                <span className="font-medium">
+                  {getRelativeTime(announcement.created_at)}
+                </span>
+              ) : (
+                `on ${postedDate.date}`
+              )}
+            </span>
+            </div>
+
+            {/* TITLE */}
+            <h3 className="text-lg font-bold text-gray-900">
+              {announcement.title}
+            </h3>
+
+            {/* DESCRIPTION */}
+            <p className="text-sm text-gray-600">
+              {announcement.description}
+            </p>
+
+            {/* FOOTER (EVENT INFO) */}
+            <div className="flex flex-wrap gap-6 pt-3 text-xs text-gray-500">
+              {announcement.location && (
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  {announcement.location}
+                </div>
+              )}
+
+              {eventDate && (
+                <div className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  {eventDate.date} • {eventDate.time}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+    {/* ===== VIEW ANNOUNCEMENT MODAL ===== */}
+    {viewingAnnouncementId && (() => {
+      const announcement = announcements.find(
+        (a) => a.id === viewingAnnouncementId
+      );
+      if (!announcement) return null;
+
+      const postedDate = formatDateTime(announcement.created_at);
+      const eventDate = announcement.scheduled_date
+        ? formatDateTime(announcement.scheduled_date)
+        : null;
+
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            
+            {/* MODAL HEADER */}
+            <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-white">
+              <h2 className="text-xl font-bold text-gray-900">
+                Announcement Details
+              </h2>
+              <button
+                onClick={() => setViewingAnnouncementId(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* MODAL CONTENT */}
+            <div className="p-6 space-y-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  {getCategoryBadge(announcement.category)}
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {announcement.title}
+                </h3>
+              </div>
+
+              {/* EVENT + LOCATION */}
+              <div className="grid grid-cols-2 gap-4 py-4 border-y">
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">
+                    Event Schedule
+                  </div>
+                  {eventDate ? (
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      {eventDate.date} at {eventDate.time}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-400">
+                      No event date provided
+                    </span>
+                  )}
+                </div>
+
+                {announcement.location && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Location</div>
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <MapPin className="w-4 h-4 text-gray-400" />
+                      {announcement.location}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* DESCRIPTION */}
+              <div>
+                <div className="text-xs text-gray-500 mb-2">Description</div>
+                <p className="text-gray-700 whitespace-pre-wrap">
+                  {announcement.description}
+                </p>
+              </div>
+
+              {/* POSTED INFO */}
+              <div className="pt-4 border-t">
+                <div className="text-xs text-gray-500">
+                  Posted{" "}
+                  {getRelativeTime(announcement.created_at) ||
+                    `on ${postedDate.date}`}{" "}
+                  by {announcement.author || "Admin"}
+
+                </div>
+              </div>
+            </div>
+
+            {/* MODAL FOOTER */}
+            <div className="p-6 border-t bg-gray-50 flex justify-end">
+              <button
+                onClick={() => setViewingAnnouncementId(null)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-
-    {/* ===== UTILITY UPDATE CARD ===== */}
-    <div className="bg-white rounded-xl shadow-sm border p-6 space-y-4">
-
-      <div className="flex items-center gap-2 text-xs text-gray-500">
-        <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-600 font-semibold">
-          UTILITY UPDATE
-        </span>
-        <span>•</span>
-        <span>Oct 22, 2024</span>
-      </div>
-
-      <h3 className="text-lg font-bold">
-        Quarterly Water Main Maintenance Cycle: North District
-      </h3>
-
-      <p className="text-sm text-gray-600">
-        Scheduled maintenance for Zone B will occur this weekend. We recommend
-        residents store a 24-hour supply of water as a precaution. Maintenance
-        crews will be working between 22:00 and 05:00 to minimize disruption.
-      </p>
-
-      {/* warning strip */}
-      <div className="flex items-center gap-2 bg-orange-50 text-orange-700 text-xs p-3 rounded-lg">
-        <AlertTriangle className="w-4 h-4" />
-        Potential low pressure expected across all residential units in Zone B
-      </div>
-    </div>
-
+      );
+    })()}
   </div>
 )}
+
+
 
   {/* ========== PARKS & RECREATION TAB ========== */}
   {activeTab === 'parks' && (
@@ -2334,25 +2583,51 @@ if (showMyReports) {
                     </button>
                   </div>
                   <div className="space-y-4">
-                    <div className="flex gap-3">
-                      <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <AlertTriangle className="w-5 h-5 text-red-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-sm">Water Main Repair</h4>
-                        <p className="text-xs text-gray-600">Disruption on North Blvd: Tomorrow 8am-4pm.</p>
-                      </div>
+                      {dashboardAnnouncements.length === 0 ? (
+                        <p className="text-sm text-gray-500">No announcements available.</p>
+                      ) : (
+                        dashboardAnnouncements.map((announcement) => {
+                          const date = new Date(
+                            announcement.scheduled_date || announcement.created_at
+                          );
+
+                          return (
+                            <div key={announcement.id} className="flex gap-3">
+                              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <Bell className="w-5 h-5 text-blue-600" />
+                              </div>
+
+                              <div>
+                                <h4 className="font-semibold text-sm">
+                                  {announcement.title}
+                                </h4>
+
+                                <p className="text-xs text-gray-600 line-clamp-2">
+                                  {announcement.description}
+                                </p>
+
+                                <p className="text-[11px] text-gray-400 mt-1">
+                                  {date.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    timeZone: 'Asia/Manila'
+                                  })}{' '}
+                                  •{' '}
+                                  {date.toLocaleTimeString('en-US', {
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    hour12: true,
+                                    timeZone: 'Asia/Manila'
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
-                    <div className="flex gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Calendar className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-sm">Town Hall Meeting</h4>
-                        <p className="text-xs text-gray-600">Join us this Thursday for the new park proposal.</p>
-                      </div>
-                    </div>
-                  </div>
+
                 </div>
 
                 {/* ========== ACTIVE REPORTS WIDGET ========== */}
@@ -2580,21 +2855,35 @@ if (showMyReports) {
 
   </div>
 )}
-           {activeTab === "announcements" && (
+
+
+{activeTab === "announcements" && (
   <>
     {/* ===== COMMUNITY CALENDAR ===== */}
     <div className="bg-white rounded-xl shadow-sm border p-4 mb-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="font-semibold text-gray-900">October 2024</h3>
+          <h3 className="font-semibold text-gray-900">
+            {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </h3>
           <p className="text-xs text-gray-500 uppercase">
             Community Calendar
           </p>
         </div>
         <div className="flex gap-2 text-gray-400 text-lg">
-          <button className="hover:text-gray-600">‹</button>
-          <button className="hover:text-gray-600">›</button>
+          <button 
+            onClick={goToPreviousMonth}
+            className="hover:text-gray-600"
+          >
+            ‹
+          </button>
+          <button 
+            onClick={goToNextMonth}
+            className="hover:text-gray-600"
+          >
+            ›
+          </button>
         </div>
       </div>
 
@@ -2609,76 +2898,185 @@ if (showMyReports) {
 
       {/* Dates */}
       <div className="grid grid-cols-7 gap-1 text-sm text-center">
-        {Array.from({ length: 31 }, (_, i) => {
-          const day = i + 1;
-          const isToday = day === 24;
-          return (
-            <div
-              key={day}
-              className={`py-1.5 rounded-lg font-medium cursor-pointer
-                ${isToday
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
+        {(() => {
+          const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
+          const days = [];
+          
+          // Empty cells for days before month starts
+          for (let i = 0; i < startingDayOfWeek; i++) {
+            days.push(<div key={`empty-${i}`} className="py-1.5"></div>);
+          }
+          
+          // Actual days of the month
+          for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+            const isToday = date.toDateString() === new Date().toDateString();
+            const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+            const hasEvents = getAnnouncementsForDate(date).length > 0;
+            
+            days.push(
+              <button
+                key={day}
+                onClick={() => setSelectedDate(date)}
+                className={`py-1.5 rounded-lg font-medium cursor-pointer transition-colors relative ${
+                  isToday
+                    ? "bg-blue-600 text-white"
+                    : isSelected 
+                    ? "bg-blue-100 text-blue-600 ring-2 ring-blue-600"
+                    : "text-gray-700 hover:bg-gray-100"
                 }`}
-            >
-              {day}
-            </div>
-          );
-        })}
+              >
+                {day}
+                {hasEvents && !isToday && !isSelected && (
+                  <div className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-600 rounded-full"></div>
+                )}
+              </button>
+            );
+          }
+          
+          return days;
+        })()}
       </div>
     </div>
 
-    {/* ===== DETAILED SCHEDULE ===== */}
+    {/* ===== UPCOMING EVENTS (FIXED UI) ===== */}
     <div className="bg-white rounded-xl shadow-sm border p-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 text-sm">
-          DETAILED SCHEDULE
+      <div className="mb-4">
+        <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide">
+          {selectedDate 
+            ? selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+            : 'Upcoming Events'
+          }
         </h3>
-        <button className="text-xs text-blue-600 font-semibold hover:underline">
-          Download ICS
-        </button>
+        {selectedDate && (
+          <button 
+            onClick={() => setSelectedDate(null)}
+            className="text-xs text-blue-600 font-semibold hover:underline mt-1"
+          >
+            ← Back to all events
+          </button>
+        )}
       </div>
 
-      {/* Event */}
-      <div className="flex gap-3 mb-4">
-        {/* Date */}
-        <div className="w-12 text-center">
-          <p className="text-xs text-gray-500">OCT</p>
-          <p className="text-lg font-bold text-gray-900">24</p>
-        </div>
+      {/* Events List */}
+  <div className="space-y-3">
+        {(() => {
+          const eventsToShow = selectedDate 
+          ? getAnnouncementsForDate(selectedDate)
+          : announcements
+              .filter(ann => ann.status === 'published')
+              .sort((a, b) => {
+                const dateA = new Date(a.scheduled_date || a.created_at).getTime();
+                const dateB = new Date(b.scheduled_date || b.created_at).getTime();
+                return dateA - dateB;
+              })
+              .slice(0, visibleCount);
 
-        {/* Event Card */}
-        <div className="flex-1 border rounded-lg p-3">
-          <div className="flex items-center justify-between mb-1">
-            <p className="font-semibold text-gray-900 text-sm">
-              City Hall Town Hall
-            </p>
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
-              Confirmed
-            </span>
-          </div>
+          
+          if (eventsToShow.length === 0) {
+            return (
+              <div className="text-center py-8">
+                <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm text-gray-500 font-medium">
+                  {selectedDate 
+                    ? 'No events on this date'
+                    : 'No upcoming events'
+                  }
+                </p>
+              </div>
+            );
+          }
 
-          <p className="text-xs text-gray-600 mb-1">
-            🕒 18:30 – 20:00 (Duration: 90 min)
-          </p>
-          <p className="text-xs text-gray-600 mb-1">
-            📍 Conference Room B, 2nd Floor
-          </p>
+          return eventsToShow.map(announcement => {
+            const eventDate = new Date(announcement.scheduled_date || announcement.created_at);
+            const month = eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+            const day = eventDate.getDate();
+            const time = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            
+            return (
+              <div 
+                key={announcement.id} 
+                className="border rounded-lg p-3 hover:border-blue-300 hover:bg-blue-50/50 transition-all cursor-pointer"
+                onClick={() => setViewingAnnouncementId(announcement.id)}
+              >
+                <div className="flex gap-3">
+                  {/* Date Badge */}
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-blue-600 text-white rounded-lg flex flex-col items-center justify-center">
+                      <div className="text-[10px] font-semibold leading-none">{month}</div>
+                      <div className="text-lg font-bold leading-none mt-0.5">{day}</div>
+                    </div>
+                  </div>
 
-          <p className="text-xs text-gray-500 italic mt-1">
-            Topic: West Side Green Space  
-            <br />
-            Expansion discussion and public feedback session
-          </p>
-        </div>
+                  {/* Event Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h4 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">
+                        {announcement.title}
+                      </h4>
+                    </div>
+
+                    {/* Category Badge */}
+                    <div className="mb-2">
+                      {getCategoryBadge(announcement.category)}
+                    </div>
+
+                    {/* Time */}
+                    <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
+                      <Clock className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate">{time}</span>
+                    </div>
+                    
+                    {/* Location */}
+                    {announcement.location && (
+                      <div className="flex items-center gap-1 text-xs text-gray-600">
+                        <MapPin className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{announcement.location}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          });
+        })()}
       </div>
 
-      {/* Load More */}
-      <button className="w-full text-sm text-gray-600 font-semibold py-2 hover:text-gray-800 flex items-center justify-center gap-1">
-        Load More Events
+     {/* LOAD MORE BUTTON */}
+        {!selectedDate && (() => {
+  const total = announcements.filter(ann => ann.status === 'published').length;
+
+  // SHOW LESS
+  if (visibleCount > INITIAL_COUNT) {
+    return (
+      <button
+        onClick={() => setVisibleCount(INITIAL_COUNT)}
+        className="w-full text-sm text-gray-600 font-semibold py-3 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1 mt-3 border-t pt-3"
+      >
+        Show less
+        <ChevronUp className="w-4 h-4" />
+      </button>
+    );
+  }
+
+  // LOAD MORE
+  if (total > visibleCount) {
+    return (
+      <button
+        onClick={() => setVisibleCount(prev => prev + LOAD_STEP)}
+        className="w-full text-sm text-blue-600 font-semibold py-3 hover:bg-blue-50 rounded-lg flex items-center justify-center gap-1 mt-3 border-t pt-3"
+      >
+        Load more
         <ChevronDown className="w-4 h-4" />
       </button>
+    );
+  }
+
+  return null;
+})()}
+
+
     </div>
   </>
 )}
