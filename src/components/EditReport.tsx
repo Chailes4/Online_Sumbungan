@@ -241,8 +241,6 @@ const EditReport = ({ reportId, onBack, onSave }: {
 
     if (!title.trim()) {
       newErrors.title = "Title is required";
-    } else if (title.length < 10) {
-      newErrors.title = "Title must be at least 10 characters";
     }
 
     if (!category) {
@@ -251,8 +249,6 @@ const EditReport = ({ reportId, onBack, onSave }: {
 
     if (!description.trim()) {
       newErrors.description = "Description is required";
-    } else if (description.length < 20) {
-      newErrors.description = "Description must be at least 20 characters";
     }
 
     if (!address.trim()) {

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import FileReport from "./components/FileReport";
-import MyReports from "./components/MyReports";
+import ReportDetails from "./components/ReportDetails";
+
 import { useRef } from "react";
 
 // Import all icons from lucide-react library
@@ -11,8 +12,23 @@ import {
   ThumbsUp, ThumbsDown, Share2, LogOut, Calendar,
   Activity, CheckCircle, Clock, Megaphone, Trees, Send, Flame,
   ShieldCheck, Ambulance, Building2, Phone, Backpack, UserRound, Users,
-   ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight, X
+   ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight, X, XCircle, Eye
 } from "lucide-react";
+
+
+interface Report {
+  id: string;
+  user_id: string;
+  title: string;
+  category: string;
+  address: string;
+  description: string;
+  media_urls: string[];
+  latitude: number;
+  longitude: number;
+  status: 'pending' | 'in_progress' | 'resolved' | 'withdrawn';
+  created_at: string;
+}
 
 // TypeScript interface defining the structure of a Post object
 interface Post {
@@ -106,15 +122,21 @@ const [showShareModal, setShowShareModal] = useState<string | null>(null);
 const [copySuccess, setCopySuccess] = useState(false);
 
 const [showFileReport, setShowFileReport] = useState(false);
-const [showMyReports, setShowMyReports] = useState(false); 
+const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
 // My active reports
 const [userReports, setUserReports] = useState<any[]>([]);
 const [loadingReports, setLoadingReports] = useState(false);
+// Reports state
+const [reports, setReports] = useState<Report[]>([]);
+const [filteredReports, setFilteredReports] = useState<Report[]>([]);
+const [searchQuery, setSearchQuery] = useState("");
+const [statusFilter, setStatusFilter] = useState("all");
+const [sortBy, setSortBy] = useState("date");
+const [currentPage, setCurrentPage] = useState(1);
+const reportsPerPage = 5;
 
-
-const [activeTab, setActiveTab] = useState<'feed' | 'alerts' | 'announcements' | 'parks'>('feed');
-
+const [activeTab, setActiveTab] = useState<'feed' | 'reports' | 'alerts' | 'announcements' | 'parks'>('feed');
 const [alerts, setAlerts] = useState<any[]>([]);
 const [alertsLoading, setAlertsLoading] = useState(true);
 
@@ -123,6 +145,7 @@ const [announcementsLoading, setAnnouncementsLoading] = useState(true);
 const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 const [currentMonth, setCurrentMonth] = useState(new Date());
 const [viewingAnnouncementId, setViewingAnnouncementId] = useState<string | null>(null);
+
 
 const getRelativeTime = (dateString: string) => {
   const now = new Date();
@@ -166,8 +189,17 @@ useEffect(() => {
   if (user) {
     fetchPosts();
     fetchUserReports();
+    fetchReports();
   }
 }, [user]);
+
+useEffect(() => {
+  filterAndSortReports();
+}, [reports, searchQuery, statusFilter, sortBy]);
+
+useEffect(() => {
+  setCurrentPage(1);
+}, [searchQuery, statusFilter, sortBy]);
 
 useEffect(() => {
   fetchAlerts();
@@ -305,6 +337,115 @@ const fetchPosts = async () => {
   });
   setPosts(postsWithUsers);
 };
+
+const fetchReports = async () => {
+  if (!user) return;
+  
+  setLoadingReports(true);
+  try {
+    const { data, error } = await supabase
+      .from("reports")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    setReports(data || []);
+  } catch (error) {
+    console.error("Error fetching reports:", error);
+  } finally {
+    setLoadingReports(false);
+  }
+};
+
+const filterAndSortReports = () => {
+  let filtered = [...reports];
+
+  if (searchQuery.trim()) {
+    filtered = filtered.filter(report => 
+      report.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      report.id.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }
+
+  if (statusFilter !== "all") {
+    filtered = filtered.filter(report => report.status === statusFilter);
+  }
+
+  if (sortBy === "date") {
+    filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  setFilteredReports(filtered);
+};
+
+
+const getStatusConfig = (status: string) => {
+  switch (status) {
+    case 'in_progress':
+      return {
+        label: 'IN PROGRESS',
+        bgColor: 'bg-blue-100',
+        textColor: 'text-blue-700',
+        icon: <Clock className="w-4 h-4" />
+      };
+    case 'resolved':
+      return {
+        label: 'RESOLVED',
+        bgColor: 'bg-green-100',
+        textColor: 'text-green-700',
+        icon: <CheckCircle className="w-4 h-4" />
+      };
+    case 'withdrawn':
+      return {
+        label: 'WITHDRAWN',
+        bgColor: 'bg-gray-100',
+        textColor: 'text-gray-700',
+        icon: <XCircle className="w-4 h-4" />
+      };
+    default:
+      return {
+        label: 'UNDER REVIEW',
+        bgColor: 'bg-orange-100',
+        textColor: 'text-orange-700',
+        icon: <Eye className="w-4 h-4" />
+      };
+  }
+};
+
+const getCategoryIcon = (category: string) => {
+  const icons: { [key: string]: string } = {
+    infrastructure: '🏗️',
+    street_lighting: '💡',
+    waste_management: '🗑️',
+    road_damage: '🚧',
+    flooding: '🌊',
+    public_safety: '🚨',
+    noise_pollution: '🔊',
+    illegal_activity: '⚠️',
+    park_maintenance: '🌳',
+    other: '📋'
+  };
+  return icons[category] || '📋';
+};
+
+const getReportId = (id: string) => {
+  return `REF-2026-${id.slice(0, 4).toUpperCase()}`;
+};
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+
+const indexOfLastReport = currentPage * reportsPerPage;
+const indexOfFirstReport = indexOfLastReport - reportsPerPage;
+const currentReports = filteredReports.slice(
+  indexOfFirstReport,
+  indexOfLastReport
+);
+const totalPages = Math.ceil(filteredReports.length / reportsPerPage);
 
 
 const fetchUserReports = async () => {
@@ -1289,15 +1430,31 @@ const formatDateTime = (dateString: string) => {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-     // Show File Report page if active
-  if (showFileReport) {
-    return <FileReport onBack={() => setShowFileReport(false)} />;
-  }
-
-  // Show My Reports page if active
-if (showMyReports) {
-  return <MyReports onBack={() => setShowFileReport(true)} onNavigateHome={() => setShowMyReports(false)} />;
+ if (showFileReport) {
+  return <FileReport onBack={() => {
+    setShowFileReport(false);
+    fetchReports(); // Refresh the reports list
+  }} />;
 }
+
+// Show report details if a report is selected
+if (selectedReportId) {
+  return (
+    <ReportDetails 
+      reportId={selectedReportId} 
+      onBack={() => {
+        setSelectedReportId(null);
+        fetchReports(); // Refresh reports list when coming back
+      }} 
+    />
+  );
+}
+
+// Current (line ~863):
+if (showFileReport) {
+  return <FileReport onBack={() => setShowFileReport(false)} />;
+}
+
   // ========== MAIN RENDER ==========
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1363,8 +1520,12 @@ if (showMyReports) {
         </button>
 
               <button 
-                onClick={() => setShowMyReports(true)}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700"
+                onClick={() => setActiveTab('reports')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-semibold ${
+                  activeTab === 'reports' 
+                    ? 'bg-blue-50 text-blue-600' 
+                    : 'hover:bg-gray-50 text-gray-700'
+                }`}
               >
                 <FileText className="w-5 h-5" />
                 My Reports
@@ -2182,6 +2343,184 @@ if (showMyReports) {
     </>
   )}
 
+  {activeTab === 'reports' && (
+  <>
+    {/* Header */}
+    <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">My Personal Reports List</h1>
+          <p className="text-sm text-gray-600">Track and manage your community grievance submissions.</p>
+        </div>
+        <button
+          onClick={() => setShowFileReport(true)}
+          className="bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+          </svg>
+          File a New Report
+        </button>
+
+        
+      </div>
+    </div>
+
+    {/* Filters */}
+    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search your reports by title or ID..."
+            className="w-full bg-gray-50 border-0 rounded-lg px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+        </div>
+
+        <div className="relative">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="appearance-none bg-gray-50 border-0 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+          >
+            <option value="all">All Statuses</option>
+            <option value="pending">Under Review</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="withdrawn">Withdrawn</option>
+          </select>
+          <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
+        </div>
+
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="appearance-none bg-gray-50 border-0 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+          >
+            <option value="date">Sort by Date</option>
+            <option value="status">Sort by Status</option>
+          </select>
+          <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
+        </div>
+      </div>
+    </div>
+
+    {/* Reports List */}
+    {loadingReports ? (
+      <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading your reports...</p>
+      </div>
+    ) : filteredReports.length === 0 ? (
+      <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+        <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+        <h3 className="text-xl font-semibold text-gray-600 mb-2">No reports found</h3>
+        <p className="text-gray-500">
+          {searchQuery || statusFilter !== "all" 
+            ? "Try adjusting your filters" 
+            : "Start by filing your first report!"}
+        </p>
+      </div>
+    ) : (
+      <div className="space-y-4">
+        {currentReports.map((report) => {
+          const statusConfig = getStatusConfig(report.status);
+          return (
+            <div
+                key={report.id}
+                onClick={() => setSelectedReportId(report.id)}
+                className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow cursor-pointer"
+              >
+                          <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-2xl">
+                  {getCategoryIcon(report.category)}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-4 mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {report.title}
+                    </h3>
+                    <span className={`${statusConfig.bgColor} ${statusConfig.textColor} px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 whitespace-nowrap`}>
+                      {statusConfig.icon}
+                      {statusConfig.label}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-2">
+                    <span className="flex items-center gap-1">
+                      # {getReportId(report.id)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      {formatDate(report.created_at)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-1 text-sm text-gray-600">
+                    <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span className="line-clamp-1">{report.address}</span>
+                  </div>
+                </div>
+
+                <div className="flex-shrink-0">
+                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    <div className="flex justify-between items-center mt-6">
+      <p className="text-sm text-gray-600">
+        Showing {indexOfFirstReport + 1}–
+        {Math.min(indexOfLastReport, filteredReports.length)} of{" "}
+        {filteredReports.length} reports
+      </p>
+
+      <div className="flex gap-1">
+        <button
+          onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+          disabled={currentPage === 1}
+          className="px-3 py-2 text-sm border rounded-lg disabled:opacity-40"
+        >
+          Prev
+        </button>
+
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+          <button
+            key={page}
+            onClick={() => setCurrentPage(page)}
+            className={`px-3 py-2 text-sm rounded-lg border
+              ${currentPage === page
+                ? "bg-blue-600 text-white border-blue-600"
+                : "hover:bg-gray-50"
+              }`}
+          >
+            {page}
+          </button>
+        ))}
+
+        <button
+          onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+          disabled={currentPage === totalPages}
+          className="px-3 py-2 text-sm border rounded-lg disabled:opacity-40"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  </>
+)}
+
 {/* ========== ALERTS TAB ========== */}
 {activeTab === 'alerts' && (
   <div className="space-y-6">
@@ -2635,7 +2974,7 @@ if (showMyReports) {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold">My Active Reports</h3>
                     <button 
-                      onClick={() => setShowMyReports(true)}
+                    onClick={() => setActiveTab('reports')}
                       className="text-blue-600 text-sm font-semibold hover:underline"
                     >
                       Track Status
@@ -2692,8 +3031,195 @@ if (showMyReports) {
                     <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">Verified</span>
                   </div>
                 </div>
+                
               </>
             )}
+
+
+ {/* REPORTS TAB SIDEBAR */}
+  {activeTab === 'reports' && (
+    <>
+      <div className="bg-blue-50 rounded-lg shadow-sm p-4">
+        <div className="flex items-start gap-3 mb-3">
+          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+            <Bell className="w-4 h-4 text-white" />
+          </div>
+          <h3 className="font-bold text-gray-900">Reporting Guidelines</h3>
+        </div>
+        <p className="text-sm text-gray-700 mb-4">
+          Ensure your reports include a precise location and clear photos. This helps our city maintenance teams resolve issues up to 30% faster.
+        </p>
+        <div className="bg-white rounded-lg p-3">
+          <p className="text-xs font-semibold text-blue-600 mb-1">RESPONSE TIME</p>
+          <p className="text-sm font-bold text-gray-900">Typical review: 24-48 hours</p>
+        </div>
+      </div>
+
+      <div className="bg-gray-100 rounded-lg shadow-sm p-4">
+        <h3 className="font-bold text-gray-900 mb-2">Need urgent help?</h3>
+        <p className="text-sm text-gray-600 mb-3">
+          For emergencies, please contact the 24/7 city hotline directly.
+        </p>
+        <button className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-700">
+          Call City Hotline
+        </button>
+      </div>
+    </>
+  )}
+
+  {/* ALERTS TAB SIDEBAR */}
+  {activeTab === 'alerts' && (
+    <>
+      {/* Quick Hotlines */}
+      <div className="bg-white rounded-xl shadow-sm p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs font-bold tracking-wide text-gray-700">
+            QUICK HOTLINES
+          </h3>
+          <span className="text-[10px] font-semibold text-red-600">
+            24/7 ACTIVE
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          {/* Fire */}
+          <div className="flex items-center justify-between p-3 rounded-lg border">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-red-500 flex items-center justify-center">
+                <Flame className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">FIRE DEPARTMENT</p>
+                <p className="text-sm font-semibold">911</p>
+              </div>
+            </div>
+            <a href="tel:911" className="text-gray-300 hover:text-red-600">
+              <Phone className="w-4 h-4" />
+            </a>
+          </div>
+
+          {/* Police */}
+          <div className="flex items-center justify-between p-3 rounded-lg border">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">POLICE STATION</p>
+                <p className="text-sm font-semibold">117</p>
+              </div>
+            </div>
+            <a href="tel:117" className="text-gray-300 hover:text-blue-600">
+              <Phone className="w-4 h-4" />
+            </a>
+          </div>
+
+          {/* Medical */}
+          <div className="flex items-center justify-between p-3 rounded-lg border">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-sky-500 flex items-center justify-center">
+                <Ambulance className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">MEDICAL EMERGENCY</p>
+                <p className="text-sm font-semibold">166</p>
+              </div>
+            </div>
+            <a href="tel:166" className="text-gray-300 hover:text-sky-600">
+              <Phone className="w-4 h-4" />
+            </a>
+          </div>
+
+          {/* Barangay */}
+          <div className="flex items-center justify-between p-3 rounded-lg border">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-green-600 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">BARANGAY HALL</p>
+                <p className="text-sm font-semibold">555-1234</p>
+              </div>
+            </div>
+            <a href="tel:5551234" className="text-gray-300 hover:text-green-600">
+              <Phone className="w-4 h-4" />
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Safety Tips */}
+      <div className="bg-white rounded-xl shadow-sm p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs font-bold tracking-wide text-gray-700">
+            SAFETY TIPS & PREPAREDNESS
+          </h3>
+          <span className="text-[10px] font-semibold text-blue-600">
+            COMMUNITY
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex gap-3 p-3 rounded-lg bg-gray-50">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+              <Backpack className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">
+                Prepare a 72-hour emergency kit
+              </p>
+              <p className="text-xs text-gray-600">
+                Include water, non-perishable food, flashlights, and first-aid.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 p-3 rounded-lg bg-gray-50">
+            <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+              <UserRound className="w-4 h-4 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">
+                Check on elderly neighbors
+              </p>
+              <p className="text-xs text-gray-600">
+                Ensure access to heat, water, and medicine.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 p-3 rounded-lg bg-gray-50">
+            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+              <Users className="w-4 h-4 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">
+                Establish a contact plan
+              </p>
+              <p className="text-xs text-gray-600">
+                Designate an out-of-town contact.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Public Safety Notice */}
+      <div className="bg-white rounded-xl shadow-sm border-l-4 border-red-500 flex gap-3 p-4">
+        <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+        <div>
+          <p className="text-xs font-semibold text-red-600">
+            PUBLIC SAFETY NOTICE
+          </p>
+          <p className="text-xs text-gray-600">
+            Verified information is updated every 15 minutes. For immediate
+            life-threatening emergencies, dial 911 directly.
+          </p>
+        </div>
+      </div>
+    </>
+  )}
+  
 
      {activeTab === "alerts" && (
   <div className="space-y-6">

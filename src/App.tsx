@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./Login";
 import Register from "./Register";
-import Dashboard from "./Dashboard";  // Add this import
-import FileReport from "./components/FileReport";  // Add this import
+import Dashboard from "./Dashboard";  
+import FileReport from "./components/FileReport";  
 import AdminDashboard from "./AdminDashboard";
 
 function App() {
@@ -12,8 +12,8 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
             <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/dashboard" element={<Dashboard />} />  {/* Add this route */}
-            <Route path="/file-report" element={<FileReport onBack={() => window.history.back()} />} />  {/* Add this route */}
+            <Route path="/dashboard" element={<Dashboard />} />  
+            <Route path="/file-report" element={<FileReport onBack={() => window.history.back()} />} />  
       </Routes>
     </BrowserRouter>
   );
