@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
+<<<<<<< HEAD:src/Dashboard.tsx
 import { supabase } from "./supabaseClient";
 import FileReport from "./components/FileReport";
 import ReportDetails from "./components/ReportDetails";
 
+=======
+import { supabase } from "../supabaseClient";
+import FileReport from "../components/FileReport";
+import MyReports from "../components/MyReports";
+>>>>>>> b89cfb637490233662a8e1049c9599e4b64d8286:src/pages/Dashboard.tsx
 import { useRef } from "react";
 
 // Import all icons from lucide-react library

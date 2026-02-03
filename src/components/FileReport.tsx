@@ -8,7 +8,7 @@ interface LocationResult {
   display_name: string;
   lat: string;
   lon: string;
-}
+} 
 
 const FileReport = ({ onBack }: { onBack: () => void }) => {
   // User state
