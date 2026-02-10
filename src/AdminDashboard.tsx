@@ -5,8 +5,7 @@ import AdminReportDetails from "./components/AdminReportDetails";
 import {
   LayoutDashboard, FileText, Bell, Users, Search, BellRing, LogOut, TrendingUp, Clock, CheckCircle, MapPin,
   Plus, Minus, Locate, Pencil, Trash2, ChevronLeft, ChevronRight, Circle, X, AlertTriangle, Info,
-  View,
-  Eye
+  View, Eye, Trees, Copy, Upload
 } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -114,6 +113,65 @@ const AdminDashboard = () => {
     'Santa Ines', 'Santo Niño', 'Sipat', 'Tabang'
   ];
 
+  // Parks state - ADD THIS
+const [parks, setParks] = useState<any[]>([]);
+const [parksView, setParksView] = useState("list");
+const [editingParkId, setEditingParkId] = useState<string | null>(null);
+const [parkForm, setParkForm] = useState({
+  name: '',
+  physical_address: '',
+  description: '',
+  amenities: [] as string[],
+  operating_hours: {
+    monday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+    tuesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+    wednesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+    thursday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+    friday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+    saturday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+    sunday: { open: '08:00 AM', close: '05:00 PM', closed: true }
+  },
+  images: [] as string[],
+  is_active: true
+});
+const [parkImages, setParkImages] = useState<File[]>([]);
+const [uploadingImages, setUploadingImages] = useState(false);
+const [existingImagesToDelete, setExistingImagesToDelete] = useState<string[]>([]);
+const [newImagesToUpload, setNewImagesToUpload] = useState<File[]>([]);
+
+const availableAmenities = [
+  'Hiking Trails', 'Benches', 'Lake', 'Garden', 'Picnic Area',
+  'Public Restroom', 'WiFi Zone', 'Parking Lot', 'Playground', 'Sports Court'
+];
+
+
+// Helper function to convert 24-hour to 12-hour format
+const convertTo12Hour = (time24: string): string => {
+  if (!time24 || !time24.includes(':')) return time24;
+  const [hours, minutes] = time24.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+};
+
+// Helper function to convert 12-hour to 24-hour format
+const convertTo24Hour = (time12: string): string => {
+  const match = time12.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return time12;
+  
+  let [, hours, minutes, ampm] = match;
+  let hour = parseInt(hours);
+  
+  if (ampm.toUpperCase() === 'PM' && hour !== 12) {
+    hour += 12;
+  } else if (ampm.toUpperCase() === 'AM' && hour === 12) {
+    hour = 0;
+  }
+  
+  return `${hour.toString().padStart(2, '0')}:${minutes}`;
+};
+
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -141,6 +199,7 @@ const AdminDashboard = () => {
       await fetchStats();
       await fetchAlerts();
       await fetchAnnouncements(); 
+      await fetchParks();
       setLoading(false);
     };
     checkAdmin();
@@ -596,7 +655,6 @@ const handleUpdateAnnouncement = async () => {
     return;
   }
 
-  // Use scheduled_date if provided, otherwise keep the original
   let scheduledDate = announcementForm.scheduled_date 
     ? new Date(announcementForm.scheduled_date).toISOString()
     : null;
@@ -620,45 +678,29 @@ const handleUpdateAnnouncement = async () => {
     alert("Announcement updated successfully!");
     setAnnouncementsView("list");
     setEditingAnnouncementId(null);
+    
+    // Clean up map
+    setShowLocationMap(false);
+    if (mapMarker && announcementMapInstanceRef.current) {
+      announcementMapInstanceRef.current.removeLayer(mapMarker);
+      setMapMarker(null);
+    }
+    if (announcementMapInstanceRef.current) {
+      announcementMapInstanceRef.current.remove();
+      announcementMapInstanceRef.current = null;
+    }
+    
     setAnnouncementForm({
       title: '',
       description: '',
       category: 'general_news',
       status: 'published',
       scheduled_date: '',
-       location: '', 
+      location: '', 
       author: ''
     });
     await fetchAnnouncements();
-  }if (error) {
-  console.error("Error creating announcement:", error);
-  alert("Failed to create announcement.");
-} else {
-  alert("Announcement created successfully!");
-  setAnnouncementsView("list");
-  
-  // Clean up map
-  setShowLocationMap(false);
-  if (mapMarker && announcementMapInstanceRef.current) {
-    announcementMapInstanceRef.current.removeLayer(mapMarker);
-    setMapMarker(null);
   }
-  if (announcementMapInstanceRef.current) {
-    announcementMapInstanceRef.current.remove();
-    announcementMapInstanceRef.current = null;
-  }
-  
-  setAnnouncementForm({
-    title: '',
-    description: '',
-    category: 'general_news',
-    status: 'published',
-    scheduled_date: '',
-    location: '', 
-    author: ''
-  });
-  await fetchAnnouncements();
-}
 };
 
 const handleDeleteAnnouncement = async (announcementId: string) => {
@@ -1036,6 +1078,391 @@ const getAnnouncementsForDate = (date: Date) => {
   });
 };
 
+// ADD THIS FUNCTION
+const fetchParks = async () => {
+  const { data, error } = await supabase
+    .from("parks")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (!error && data) {
+    setParks(data);
+  }
+};
+
+// Parks functions - ADD ALL OF THESE
+
+const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const files = e.target.files;
+  if (!files) return;
+
+  const fileArray = Array.from(files);
+  
+  // Validate file sizes (max 5MB each)
+  const validFiles = fileArray.filter(file => {
+    if (file.size > 5 * 1024 * 1024) {
+      alert(`${file.name} is too large. Max size is 5MB.`);
+      return false;
+    }
+    return true;
+  });
+
+  setParkImages(prev => [...prev, ...validFiles]);
+};
+
+const removeImage = (index: number) => {
+  setParkImages(prev => prev.filter((_, i) => i !== index));
+};
+
+const toggleAmenity = (amenity: string) => {
+  setParkForm(prev => ({
+    ...prev,
+    amenities: prev.amenities.includes(amenity)
+      ? prev.amenities.filter(a => a !== amenity)
+      : [...prev.amenities, amenity]
+  }));
+};
+
+const handleOperatingHoursChange = (day: string, field: string, value: string | boolean) => {
+  setParkForm(prev => ({
+    ...prev,
+    operating_hours: {
+      ...prev.operating_hours,
+      [day]: {
+        ...prev.operating_hours[day as keyof typeof prev.operating_hours],
+        [field]: field === 'open' || field === 'close' 
+          ? (typeof value === 'string' ? convertTo12Hour(value) : value)
+          : value
+      }
+    }
+  }));
+};
+
+const copyHours = (sourceDay: string) => {
+  const sourceHours = parkForm.operating_hours[sourceDay as keyof typeof parkForm.operating_hours];
+  const newHours = { ...parkForm.operating_hours };
+  
+  Object.keys(newHours).forEach(day => {
+    if (day !== sourceDay) {
+      newHours[day as keyof typeof newHours] = { ...sourceHours };
+    }
+  });
+
+  setParkForm(prev => ({ ...prev, operating_hours: newHours }));
+  alert(`Hours copied from ${sourceDay} to all other days!`);
+};
+
+const handleCreatePark = async () => {
+  if (!parkForm.name || !parkForm.physical_address) {
+    alert("Please fill in required fields (name and address).");
+    return;
+  }
+
+  if (parkImages.length === 0) {
+    const confirm = window.confirm("No images selected. Continue without images?");
+    if (!confirm) return;
+  }
+
+  setUploadingImages(true);
+
+  try {
+    const imageUrls: string[] = [];
+    
+    console.log('🚀 Starting upload process...');
+    console.log(`📦 Files to upload: ${parkImages.length}`);
+    
+    // Upload each image to Supabase Storage
+    for (let i = 0; i < parkImages.length; i++) {
+      const file = parkImages[i];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${i}.${fileExt}`;
+      const filePath = `parks/${fileName}`;
+
+      console.log(`📤 Uploading ${i + 1}/${parkImages.length}: ${file.name}`);
+      console.log(`   Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+      console.log(`   Path: ${filePath}`);
+
+      // CRITICAL: Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('park-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('❌ Upload failed:', uploadError);
+        console.error('   Error message:', uploadError.message);
+        console.error('   Error details:', JSON.stringify(uploadError, null, 2));
+        
+        // Show specific error to user
+        alert(`Failed to upload ${file.name}: ${uploadError.message}`);
+        throw uploadError;
+      }
+
+      console.log('✅ Upload successful:', uploadData);
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('park-images')
+        .getPublicUrl(filePath);
+
+      console.log('🔗 Public URL:', urlData?.publicUrl);
+
+      if (urlData?.publicUrl) {
+        imageUrls.push(urlData.publicUrl);
+      } else {
+        console.error('❌ Failed to get public URL');
+        throw new Error('Failed to get public URL for uploaded image');
+      }
+    }
+
+    console.log('✅ All images uploaded successfully!');
+    console.log('📋 Image URLs:', imageUrls);
+
+    // Create park record with image URLs
+    const { error: dbError } = await supabase
+      .from("parks")
+      .insert([{
+        name: parkForm.name,
+        physical_address: parkForm.physical_address,
+        description: parkForm.description,
+        amenities: parkForm.amenities,
+        operating_hours: parkForm.operating_hours,
+        images: imageUrls,
+        is_active: parkForm.is_active,
+        created_by: user.id
+      }]);
+
+    setUploadingImages(false);
+
+    if (dbError) {
+      console.error("❌ Database error:", dbError);
+      alert("Images uploaded but failed to save park. Please try again.");
+      
+      // Clean up uploaded images
+      for (const url of imageUrls) {
+        const path = url.split('/').pop();
+        if (path) {
+          await supabase.storage.from('park-images').remove([`parks/${path}`]);
+        }
+      }
+    } else {
+      console.log('🎉 Park created successfully!');
+      alert("Park created successfully with images!");
+      setParksView("list");
+      
+      // Reset form
+      setParkForm({
+        name: '',
+        physical_address: '',
+        description: '',
+        amenities: [],
+        operating_hours: {
+          monday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          tuesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          wednesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          thursday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          friday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          saturday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          sunday: { open: '08:00 AM', close: '05:00 PM', closed: true }
+        },
+        images: [],
+        is_active: true
+      });
+      setParkImages([]);
+      await fetchParks();
+    }
+  } catch (error: any) {
+    setUploadingImages(false);
+    console.error("💥 Fatal error:", error);
+    alert(`Failed to create park: ${error.message || 'Unknown error'}`);
+  }
+};
+
+const handleEditPark = (park: any) => {
+  setParkForm({
+    name: park.name,
+    physical_address: park.physical_address,
+    description: park.description || '',
+    amenities: park.amenities || [],
+    operating_hours: park.operating_hours || {
+      monday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+      tuesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+      wednesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+      thursday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+      friday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+      saturday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+      sunday: { open: '08:00 AM', close: '05:00 PM', closed: true }
+    },
+    images: park.images || [],
+    is_active: park.is_active
+  });
+  setEditingParkId(park.id);
+  setParkImages([]); // Clear new images
+  setExistingImagesToDelete([]); // Clear delete queue
+  setParksView("create");
+};
+
+const handleUpdatePark = async () => {
+  if (!parkForm.name || !parkForm.physical_address) {
+    alert("Please fill in required fields (name and address).");
+    return;
+  }
+
+  setUploadingImages(true);
+
+  try {
+    const newImageUrls: string[] = [];
+    
+    console.log('🚀 Starting update process...');
+    console.log(`📦 New files to upload: ${parkImages.length}`);
+    
+    // Upload new images
+    for (let i = 0; i < parkImages.length; i++) {
+      const file = parkImages[i];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${i}.${fileExt}`;
+      const filePath = `parks/${fileName}`;
+
+      console.log(`📤 Uploading ${i + 1}/${parkImages.length}: ${file.name}`);
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('park-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('❌ Upload failed:', uploadError);
+        alert(`Failed to upload ${file.name}: ${uploadError.message}`);
+        throw uploadError;
+      }
+
+      console.log('✅ Upload successful');
+
+      const { data: urlData } = supabase.storage
+        .from('park-images')
+        .getPublicUrl(filePath);
+
+      if (urlData?.publicUrl) {
+        newImageUrls.push(urlData.publicUrl);
+      }
+    }
+
+    console.log(`🗑️  Deleting ${existingImagesToDelete.length} old images...`);
+
+    // Delete removed images from storage
+    for (const imageUrl of existingImagesToDelete) {
+      const urlParts = imageUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      const filePath = `parks/${fileName}`;
+      
+      console.log(`🗑️  Deleting: ${fileName}`);
+      
+      const { error: deleteError } = await supabase.storage
+        .from('park-images')
+        .remove([filePath]);
+        
+      if (deleteError) {
+        console.error('⚠️  Delete failed (non-critical):', deleteError);
+      } else {
+        console.log('✅ Deleted successfully');
+      }
+    }
+
+    // Combine existing images with new ones
+    const finalImages = [...parkForm.images, ...newImageUrls];
+
+    console.log(`📊 Final image count: ${finalImages.length}`);
+
+    // Update park record
+    const { error: dbError } = await supabase
+      .from("parks")
+      .update({
+        name: parkForm.name,
+        physical_address: parkForm.physical_address,
+        description: parkForm.description,
+        amenities: parkForm.amenities,
+        operating_hours: parkForm.operating_hours,
+        images: finalImages,
+        is_active: parkForm.is_active
+      })
+      .eq("id", editingParkId);
+
+    setUploadingImages(false);
+
+    if (dbError) {
+      console.error("❌ Database error:", dbError);
+      alert("Failed to update park.");
+    } else {
+      console.log('🎉 Park updated successfully!');
+      alert("Park updated successfully!");
+      setParksView("list");
+      setEditingParkId(null);
+      
+      // Reset form
+      setParkForm({
+        name: '',
+        physical_address: '',
+        description: '',
+        amenities: [],
+        operating_hours: {
+          monday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          tuesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          wednesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          thursday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          friday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          saturday: { open: '08:00 AM', close: '05:00 PM', closed: false },
+          sunday: { open: '08:00 AM', close: '05:00 PM', closed: true }
+        },
+        images: [],
+        is_active: true
+      });
+      setParkImages([]);
+      setExistingImagesToDelete([]);
+      await fetchParks();
+    }
+  } catch (error: any) {
+    setUploadingImages(false);
+    console.error("💥 Fatal error:", error);
+    alert(`Failed to update park: ${error.message || 'Unknown error'}`);
+  }
+};
+
+const handleDeletePark = async (parkId: string) => {
+  if (!window.confirm("Are you sure you want to delete this park?")) return;
+
+  const { error } = await supabase
+    .from("parks")
+    .delete()
+    .eq("id", parkId);
+
+  if (error) {
+    console.error("Error deleting park:", error);
+    alert("Failed to delete park.");
+  } else {
+    alert("Park deleted successfully!");
+    await fetchParks();
+  }
+};
+
+const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
+  const { error } = await supabase
+    .from("parks")
+    .update({ is_active: !currentStatus })
+    .eq("id", parkId);
+
+  if (error) {
+    console.error("Error updating park status:", error);
+    alert("Failed to update status.");
+  } else {
+    alert(`Park ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+    await fetchParks();
+  }
+};
+
   const priorityCounts = {
     high: reports.filter(r => r.priority === 'high').length,
     medium: reports.filter(r => r.priority === 'medium').length,
@@ -1125,6 +1552,15 @@ const getAnnouncementsForDate = (date: Date) => {
           >
             <Bell className="w-5 h-5" />
             <span className="font-medium">Announcements</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("parks")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${
+              activeTab === "parks" ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <Trees className="w-5 h-5" />
+            <span className="font-medium">Parks & Recreation</span>
           </button>
           <button
             onClick={() => setActiveTab("users")}
@@ -2510,6 +2946,422 @@ const getAnnouncementsForDate = (date: Date) => {
               </div>
             );
           })()}
+  </main>
+)}
+
+{/* Parks Tab - ADD THIS ENTIRE SECTION */}
+{activeTab === "parks" && (
+  <main className="flex-1 overflow-auto p-8">
+    {parksView === "list" && (
+      <>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Parks & Recreation Directory</h1>
+            <p className="text-sm text-gray-500">Manage public parks, facilities, and recreational areas</p>
+          </div>
+          <button
+            onClick={() => setParksView("create")}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
+          >
+            <Plus className="w-4 h-4" />
+            Add New Park
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {parks.map(park => (
+            <div key={park.id} className="bg-white rounded-xl shadow border overflow-hidden group hover:shadow-lg transition-shadow">
+              {/* Park Image */}
+              <div className="h-48 bg-gradient-to-br from-green-400 to-emerald-600 relative">
+                 {park.images && park.images.length > 0 ? (
+                <img 
+                  src={park.images[0]} 
+                  alt={park.name} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback to gradient if image fails
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Trees className="w-16 h-16 text-white opacity-50" />
+                  </div>
+                )}
+                <div className="absolute top-3 right-3">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={park.is_active}
+                      onChange={() => toggleParkStatus(park.id, park.is_active)}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Park Details */}
+              <div className="p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 text-lg">{park.name}</h3>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2 mb-3">
+                  <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-gray-600 line-clamp-2">{park.physical_address}</p>
+                </div>
+
+                {park.description && (
+                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">{park.description}</p>
+                )}
+
+                {/* Amenities */}
+                {park.amenities && park.amenities.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex flex-wrap gap-1">
+                      {park.amenities.slice(0, 3).map((amenity: string, index: number) => (
+                        <span key={index} className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded">
+                          {amenity}
+                        </span>
+                      ))}
+                      {park.amenities.length > 3 && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                          +{park.amenities.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Operating Hours Today */}
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-4">
+                  <Clock className="w-3.5 h-3.5" />
+                  {(() => {
+                    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+                    const hours = park.operating_hours?.[today as keyof typeof park.operating_hours];
+                    return hours?.closed 
+                      ? <span className="text-red-600 font-medium">Closed Today</span>
+                      : <span>Open {hours?.open} - {hours?.close}</span>;
+                  })()}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-4 border-t">
+                  <button 
+                    onClick={() => handleEditPark(park)}
+                    className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 flex items-center justify-center gap-2"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => handleDeletePark(park.id)}
+                    className="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {parks.length === 0 && (
+          <div className="text-center py-16">
+            <Trees className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No parks added yet. Click "Add New Park" to get started.</p>
+          </div>
+        )}
+      </>
+    )}
+
+    {parksView === "create" && (
+      <>
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => {
+              setParksView("list");
+              setEditingParkId(null);
+            }}
+            className="p-2 rounded-lg border hover:bg-gray-50"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {editingParkId ? 'Edit Park Details' : 'Add New Park Details'}
+            </h1>
+            <p className="text-sm text-gray-500">
+              {editingParkId ? 'Update park information' : 'Create a new public park listing for the directory'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Main Info */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* General Information */}
+            <div className="bg-white rounded-xl shadow border p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Info className="w-5 h-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900">General Information</h2>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Park Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={parkForm.name}
+                    onChange={(e) => setParkForm({...parkForm, name: e.target.value})}
+                    className="w-full px-4 py-2 border rounded-lg"
+                    placeholder="e.g., Westside Botanical Park"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Physical Address <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={parkForm.physical_address}
+                    onChange={(e) => setParkForm({...parkForm, physical_address: e.target.value})}
+                    className="w-full px-4 py-2 border rounded-lg"
+                    placeholder="Street name, District, Zip Code"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                  <textarea
+                    value={parkForm.description}
+                    onChange={(e) => setParkForm({...parkForm, description: e.target.value})}
+                    rows={4}
+                    className="w-full px-4 py-2 border rounded-lg"
+                    placeholder="Describe the park, features, history, and unique highlights..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Amenities & Facilities */}
+            <div className="bg-white rounded-xl shadow border p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Amenities & Facilities</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {availableAmenities.map(amenity => (
+                  <label key={amenity} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      checked={parkForm.amenities.includes(amenity)}
+                      onChange={() => toggleAmenity(amenity)}
+                      className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    />
+                    <span className="text-sm text-gray-700">{amenity}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Media Management */}
+            <div className="bg-white rounded-xl shadow border p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Media Management</h2>
+              
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-green-500 transition-colors cursor-pointer">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="park-images"
+                />
+                <label htmlFor="park-images" className="cursor-pointer">
+                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm text-gray-600 mb-1">Upload Park Gallery</p>
+                  <p className="text-xs text-gray-400">Drag and drop images here, or click to browse. Max 5MB per file.</p>
+                </label>
+              </div>
+
+          {/* Existing Images (when editing) */}
+{editingParkId && parkForm.images.length > 0 && (
+  <div className="mt-4">
+    <p className="text-sm font-medium text-gray-700 mb-2">Current Images</p>
+    <div className="grid grid-cols-4 gap-3">
+      {parkForm.images.map((imageUrl, index) => (
+        <div key={`existing-${index}`} className="relative group">
+          <img
+            src={imageUrl}
+            alt={`Park ${index + 1}`}
+            className="w-full h-24 object-cover rounded-lg"
+            onError={(e) => {
+              // Fallback if image fails to load
+              e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle"%3ENo Image%3C/text%3E%3C/svg%3E';
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              // Mark for deletion
+              setExistingImagesToDelete(prev => [...prev, imageUrl]);
+              setParkForm(prev => ({
+                ...prev,
+                images: prev.images.filter((_, i) => i !== index)
+              }));
+            }}
+            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+{/* New Images to Upload */}
+{parkImages.length > 0 && (
+  <div className="mt-4">
+    <p className="text-sm font-medium text-gray-700 mb-2">
+      New Images to Upload ({parkImages.length})
+    </p>
+    <div className="grid grid-cols-4 gap-3">
+      {parkImages.map((img, index) => (
+        <div key={`new-${index}`} className="relative group">
+          <img
+            src={URL.createObjectURL(img)}
+            alt={`Preview ${index + 1}`}
+            className="w-full h-24 object-cover rounded-lg"
+          />
+          <button
+            type="button"
+            onClick={() => removeImage(index)}
+            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <X className="w-3 h-3" />
+          </button>
+          <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded">
+            NEW
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+            </div>
+          </div>
+
+          {/* Right Column - Operating Hours & Status */}
+          <div className="space-y-6">
+            {/* Initial Status */}
+            <div className="bg-white rounded-xl shadow border p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Initial Status</h2>
+              <label className="flex items-center gap-3">
+                <div className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    checked={parkForm.is_active}
+                    onChange={(e) => setParkForm({...parkForm, is_active: e.target.checked})}
+                    className="sr-only peer"
+                  />
+                  <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-600"></div>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">Publishing Status:</p>
+                  <p className="text-sm text-gray-500">
+                    {parkForm.is_active ? 'Active - Visible to public' : 'Inactive - Hidden from public'}
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            {/* Operating Hours */}
+            <div className="bg-white rounded-xl shadow border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Operating Hours</h2>
+                <button
+                  onClick={() => {
+                    const firstDay = Object.keys(parkForm.operating_hours)[0];
+                    copyHours(firstDay);
+                  }}
+                  className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                >
+                  <Copy className="w-3 h-3" />
+                  Copy to All
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {Object.entries(parkForm.operating_hours).map(([day, hours]) => (
+                  <div key={day} className="border rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium capitalize">{day}</span>
+                      <label className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Closed</span>
+                        <input
+                          type="checkbox"
+                          checked={hours.closed}
+                          onChange={(e) => handleOperatingHoursChange(day, 'closed', e.target.checked)}
+                          className="rounded"
+                        />
+                      </label>
+                    </div>
+                    
+                   {!hours.closed && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-gray-500">Open</label>
+                          <input
+                            type="time"
+                            value={convertTo24Hour(hours.open)}
+                            onChange={(e) => handleOperatingHoursChange(day, 'open', e.target.value)}
+                            className="w-full px-2 py-1 text-sm border rounded"
+                          />
+                          <div className="text-xs text-gray-600 mt-0.5">{hours.open}</div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">Close</label>
+                          <input
+                            type="time"
+                            value={convertTo24Hour(hours.close)}
+                            onChange={(e) => handleOperatingHoursChange(day, 'close', e.target.value)}
+                            className="w-full px-2 py-1 text-sm border rounded"
+                          />
+                          <div className="text-xs text-gray-600 mt-0.5">{hours.close}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-between mt-6 bg-white rounded-xl shadow border p-6">
+          <button
+            onClick={() => {
+              setParksView("list");
+              setEditingParkId(null);
+            }}
+            className="px-6 py-2 border rounded-lg hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={editingParkId ? handleUpdatePark : handleCreatePark}
+            disabled={uploadingImages}
+            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+          >
+            {uploadingImages ? 'Uploading...' : (editingParkId ? 'Update Park' : 'Create Park Listing')}
+          </button>
+        </div>
+      </>
+    )}
   </main>
 )}
         

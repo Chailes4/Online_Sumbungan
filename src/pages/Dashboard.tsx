@@ -51,8 +51,6 @@ interface Post {
   };
 }
 
-
-
 // TypeScript interface for comments
 interface Comment {
   id: string;
@@ -1610,183 +1608,183 @@ if (showFileReport) {
           </aside>
 
          {/* ========== CENTER FEED ========== */}
-<main className="col-span-6">
-  {/* ========== CREATE/EDIT POST MODAL ========== */}
-  {showPostModal && (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
-          <h3 className="text-xl font-bold">{editingPost ? "Edit Post" : "Create Post"}</h3>
-          <button
-            onClick={() => {
-              setShowPostModal(false);
-              setPostContent("");
-              setIsAnonymous(false);
-              setSelectedImage(null);
-              setSelectedMediaType(null);
-              setSelectedLocation(null);
-              setSelectedMood(null);
-              setEditingPost(null);
-            }}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Modal content */}
-        <div className="p-6">
-          <div className="flex gap-3 mb-4">
-            <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
-            <div className="flex-1">
-              <p className="font-semibold">{userData?.full_name || "User"}</p>
-              <p className="text-sm text-gray-500">Public</p>
-            </div>
-          </div>
-
-          {/* Post content textarea */}
-          <textarea
-            value={postContent}
-            onChange={(e) => setPostContent(e.target.value)}
-            placeholder="What's on your mind?"
-            className="w-full bg-gray-50 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[150px]"
-            autoFocus
-          />
-
-          {/* Media preview (image or video) */}
-          {selectedImage && (
-            <div className="relative mt-4">
-              {selectedMediaType === 'video' ? (
-                <video
-                  src={selectedImage}
-                  controls
-                  className="w-full rounded-lg max-h-96"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              ) : (
-                <img
-                  src={selectedImage}
-                  alt="Preview"
-                  className="w-full rounded-lg max-h-96 object-cover"
-                />
-              )}
+    <main className="col-span-6">
+      {/* ========== CREATE/EDIT POST MODAL ========== */}
+      {showPostModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
+              <h3 className="text-xl font-bold">{editingPost ? "Edit Post" : "Create Post"}</h3>
               <button
-                onClick={handleRemoveImage}
-                className="absolute top-2 right-2 bg-gray-900 bg-opacity-75 text-white rounded-full p-2 hover:bg-opacity-90"
+                onClick={() => {
+                  setShowPostModal(false);
+                  setPostContent("");
+                  setIsAnonymous(false);
+                  setSelectedImage(null);
+                  setSelectedMediaType(null);
+                  setSelectedLocation(null);
+                  setSelectedMood(null);
+                  setEditingPost(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-          )}
 
-          {uploadingImage && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg flex items-center gap-3">
-              <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm text-blue-600">Uploading {selectedMediaType === 'video' ? 'video' : 'image'}...</span>
-            </div>
-          )}
+            {/* Modal content */}
+            <div className="p-6">
+              <div className="flex gap-3 mb-4">
+                <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
+                <div className="flex-1">
+                  <p className="font-semibold">{userData?.full_name || "User"}</p>
+                  <p className="text-sm text-gray-500">Public</p>
+                </div>
+              </div>
 
-          <div className="mt-4 p-4 border rounded-lg">
-            <p className="text-sm font-semibold text-gray-700 mb-3">Add to your post</p>
-            <div className="flex gap-2 flex-wrap">
-              <label className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 cursor-pointer">
-                <Image className="w-5 h-5 text-green-600" />
-                <span className="text-sm font-medium">Photo/Video</span>
+              {/* Post content textarea */}
+              <textarea
+                value={postContent}
+                onChange={(e) => setPostContent(e.target.value)}
+                placeholder="What's on your mind?"
+                className="w-full bg-gray-50 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[150px]"
+                autoFocus
+              />
+
+              {/* Media preview (image or video) */}
+              {selectedImage && (
+                <div className="relative mt-4">
+                  {selectedMediaType === 'video' ? (
+                    <video
+                      src={selectedImage}
+                      controls
+                      className="w-full rounded-lg max-h-96"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  ) : (
+                    <img
+                      src={selectedImage}
+                      alt="Preview"
+                      className="w-full rounded-lg max-h-96 object-cover"
+                    />
+                  )}
+                  <button
+                    onClick={handleRemoveImage}
+                    className="absolute top-2 right-2 bg-gray-900 bg-opacity-75 text-white rounded-full p-2 hover:bg-opacity-90"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+
+              {uploadingImage && (
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg flex items-center gap-3">
+                  <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-sm text-blue-600">Uploading {selectedMediaType === 'video' ? 'video' : 'image'}...</span>
+                </div>
+              )}
+
+              <div className="mt-4 p-4 border rounded-lg">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Add to your post</p>
+                <div className="flex gap-2 flex-wrap">
+                  <label className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 cursor-pointer">
+                    <Image className="w-5 h-5 text-green-600" />
+                    <span className="text-sm font-medium">Photo/Video</span>
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                      disabled={uploadingImage}
+                    />
+                  </label>
+
+                  <button 
+                    onClick={() => setShowLocationModal(true)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                  >
+                    <MapPin className="w-5 h-5 text-red-600" />
+                    <span className="text-sm font-medium">Location</span>
+                  </button>
+
+                  <button 
+                    onClick={() => setShowMoodModal(true)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                  >
+                    <Smile className="w-5 h-5 text-yellow-600" />
+                    <span className="text-sm font-medium">Mood</span>
+                  </button>
+                </div>
+
+                {selectedLocation && (
+                  <div className="mt-3 flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
+                    <MapPin className="w-4 h-4 text-red-600" />
+                    <span className="text-sm text-gray-700">{selectedLocation}</span>
+                    <button
+                      onClick={() => setSelectedLocation(null)}
+                      className="ml-auto text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
+                {selectedMood && (
+                  <div className="mt-3 flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
+                    <span className="text-lg">{moods.find(m => m.label === selectedMood)?.emoji}</span>
+                    <span className="text-sm text-gray-700">Feeling {selectedMood}</span>
+                    <button
+                      onClick={() => setSelectedMood(null)}
+                      className="ml-auto text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <label className="flex items-center gap-2 mt-4 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
                 <input
-                  type="file"
-                  accept="image/*,video/*"
-                  onChange={handleImageSelect}
-                  className="hidden"
-                  disabled={uploadingImage}
+                  type="checkbox"
+                  checked={isAnonymous}
+                  onChange={(e) => setIsAnonymous(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                 />
+                <span className="text-sm font-medium text-gray-700">Post anonymously</span>
               </label>
-
-              <button 
-                onClick={() => setShowLocationModal(true)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600"
-              >
-                <MapPin className="w-5 h-5 text-red-600" />
-                <span className="text-sm font-medium">Location</span>
-              </button>
-
-              <button 
-                onClick={() => setShowMoodModal(true)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600"
-              >
-                <Smile className="w-5 h-5 text-yellow-600" />
-                <span className="text-sm font-medium">Mood</span>
-              </button>
             </div>
 
-            {selectedLocation && (
-              <div className="mt-3 flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
-                <MapPin className="w-4 h-4 text-red-600" />
-                <span className="text-sm text-gray-700">{selectedLocation}</span>
-                <button
-                  onClick={() => setSelectedLocation(null)}
-                  className="ml-auto text-gray-400 hover:text-gray-600"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            )}
-
-            {selectedMood && (
-              <div className="mt-3 flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
-                <span className="text-lg">{moods.find(m => m.label === selectedMood)?.emoji}</span>
-                <span className="text-sm text-gray-700">Feeling {selectedMood}</span>
-                <button
-                  onClick={() => setSelectedMood(null)}
-                  className="ml-auto text-gray-400 hover:text-gray-600"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            )}
+            <div className="p-4 border-t bg-gray-50">
+              <button
+                onClick={editingPost ? handleUpdatePost : handleCreatePost}
+                disabled={posting || (!postContent.trim() && !selectedImage) || uploadingImage}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {posting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {editingPost ? "Updating..." : "Posting..."}
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    {editingPost ? "Update" : "Post"}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-
-          <label className="flex items-center gap-2 mt-4 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-            <input
-              type="checkbox"
-              checked={isAnonymous}
-              onChange={(e) => setIsAnonymous(e.target.checked)}
-              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-            />
-            <span className="text-sm font-medium text-gray-700">Post anonymously</span>
-          </label>
         </div>
-
-        <div className="p-4 border-t bg-gray-50">
-          <button
-            onClick={editingPost ? handleUpdatePost : handleCreatePost}
-            disabled={posting || (!postContent.trim() && !selectedImage) || uploadingImage}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {posting ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                {editingPost ? "Updating..." : "Posting..."}
-              </>
-            ) : (
-              <>
-                <Send className="w-5 h-5" />
-                {editingPost ? "Update" : "Post"}
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  )}
+      )}
 
   {/* ========== LOCATION MODAL ========== */}
   {showLocationModal && (
@@ -2843,66 +2841,147 @@ if (showFileReport) {
 
 
   {/* ========== PARKS & RECREATION TAB ========== */}
-  {activeTab === 'parks' && (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-          <Trees className="w-6 h-6 text-green-600" />
+  {/* ========== PARKS & RECREATION TAB ========== */}
+{activeTab === 'parks' && (
+  <div className="space-y-6">
+    {/* Header */}
+    <div className="bg-white rounded-lg shadow-sm p-6 flex items-start justify-between">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Parks & Recreation Directory</h1>
+        <p className="text-gray-600">Discover and explore our vibrant, green public spaces.</p>
+      </div>
+      <button className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 flex items-center gap-2 whitespace-nowrap">
+        <Calendar className="w-5 h-5" />
+        Reserve a Facility
+      </button>
+    </div>
+
+    {/* Park Cards */}
+    <div className="space-y-6">
+      {/* Westside Botanical Park */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        {/* Park Image */}
+        <div className="relative h-64 bg-gradient-to-br from-green-400 to-green-600">
+          <img 
+            src="https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=800&h=400&fit=crop" 
+            alt="Westside Botanical Park"
+            className="w-full h-full object-cover"
+          />
+          <span className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold">
+            OPEN NOW
+          </span>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold">Parks & Recreation</h2>
-          <p className="text-sm text-gray-600">Facilities, events, and outdoor activities</p>
+
+        {/* Park Info */}
+        <div className="p-6 relative">
+          {/* Location Pin Button */}
+          <button className="absolute top-6 right-6 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 shadow-lg">
+            <MapPin className="w-6 h-6" />
+          </button>
+
+          <h3 className="text-xl font-bold text-gray-900 mb-1">Westside Botanical Park</h3>
+          <p className="text-sm text-gray-500 mb-4">123 Flora Way, West District</p>
+
+          {/* Amenities */}
+          <div className="flex gap-6 text-sm text-gray-700">
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-600" />
+              <span>Hiking Trails</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-green-600" />
+              <span>Benches</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-green-600" />
+              <span>Lake</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Trees className="w-5 h-5 text-green-600" />
+              <span>Garden</span>
+            </div>
+          </div>
         </div>
       </div>
-      
-      <div className="space-y-4">
-        <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-          <div className="flex items-start gap-3">
-            <Trees className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="font-bold text-gray-900">Central Park</h3>
-              <p className="text-sm text-gray-700 mt-2">Our main community park featuring a children's playground, basketball court, jogging path, and covered pavilion for events.</p>
-              <div className="mt-3 space-y-1">
-                <p className="text-xs text-gray-600">🕐 Open daily: 6:00 AM - 8:00 PM</p>
-                <p className="text-xs text-gray-600">📍 Main Street, Barangay Center</p>
-                <p className="text-xs text-gray-600">♿ Wheelchair accessible</p>
-              </div>
+
+      {/* Riverside Recreation Area */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="relative h-64 bg-gradient-to-br from-blue-400 to-blue-600">
+          <img 
+            src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=400&fit=crop" 
+            alt="Riverside Recreation Area"
+            className="w-full h-full object-cover"
+          />
+          <span className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold">
+            OPEN NOW
+          </span>
+        </div>
+
+        <div className="p-6 relative">
+          <button className="absolute top-6 right-6 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 shadow-lg">
+            <MapPin className="w-6 h-6" />
+          </button>
+
+          <h3 className="text-xl font-bold text-gray-900 mb-1">Riverside Recreation Area</h3>
+          <p className="text-sm text-gray-500 mb-4">River Road, East District</p>
+
+          <div className="flex gap-6 text-sm text-gray-700">
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-600" />
+              <span>Walking Trails</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-green-600" />
+              <span>Picnic Areas</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-green-600" />
+              <span>Fishing Spots</span>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-          <div className="flex items-start gap-3">
-            <Trees className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="font-bold text-gray-900">Riverside Recreation Area</h3>
-              <p className="text-sm text-gray-700 mt-2">Scenic riverside park with walking trails, picnic areas, and fishing spots. Perfect for family outings and nature walks.</p>
-              <div className="mt-3 space-y-1">
-                <p className="text-xs text-gray-600">🕐 Open daily: 5:00 AM - 7:00 PM</p>
-                <p className="text-xs text-gray-600">📍 River Road, East District</p>
-                <p className="text-xs text-gray-600">🎣 Fishing permit required</p>
-              </div>
-            </div>
-          </div>
+      {/* Community Sports Complex */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="relative h-64 bg-gradient-to-br from-orange-400 to-orange-600">
+          <img 
+            src="https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&h=400&fit=crop" 
+            alt="Community Sports Complex"
+            className="w-full h-full object-cover"
+          />
+          <span className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold">
+            OPEN NOW
+          </span>
         </div>
 
-        <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-          <div className="flex items-start gap-3">
-            <Activity className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="font-bold text-gray-900">Community Sports Complex</h3>
-              <p className="text-sm text-gray-700 mt-2">Multi-purpose sports facility with basketball courts, volleyball courts, and a covered gym. Available for public use and private rentals.</p>
-              <div className="mt-3 space-y-1">
-                <p className="text-xs text-gray-600">🕐 Open: Mon-Sun 6:00 AM - 9:00 PM</p>
-                <p className="text-xs text-gray-600">📍 Sports Avenue, North District</p>
-                <p className="text-xs text-gray-600">💰 Rental: ₱500/hour for private events</p>
-              </div>
+        <div className="p-6 relative">
+          <button className="absolute top-6 right-6 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 shadow-lg">
+            <MapPin className="w-6 h-6" />
+          </button>
+
+          <h3 className="text-xl font-bold text-gray-900 mb-1">Community Sports Complex</h3>
+          <p className="text-sm text-gray-500 mb-4">Sports Avenue, North District</p>
+
+          <div className="flex gap-6 text-sm text-gray-700">
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-600" />
+              <span>Basketball Courts</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-600" />
+              <span>Volleyball Courts</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-green-600" />
+              <span>Covered Gym</span>
             </div>
           </div>
         </div>
       </div>
     </div>
-  )}
+  </div>
+)}
 </main>
 
           {/* ========== RIGHT SIDEBAR ========== */}
@@ -3409,138 +3488,114 @@ if (showFileReport) {
 
      {/* LOAD MORE BUTTON */}
         {!selectedDate && (() => {
-  const total = announcements.filter(ann => ann.status === 'published').length;
+          const total = announcements.filter(ann => ann.status === 'published').length;
 
-  // SHOW LESS
-  if (visibleCount > INITIAL_COUNT) {
-    return (
-      <button
-        onClick={() => setVisibleCount(INITIAL_COUNT)}
-        className="w-full text-sm text-gray-600 font-semibold py-3 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1 mt-3 border-t pt-3"
-      >
-        Show less
-        <ChevronUp className="w-4 h-4" />
+          // SHOW LESS
+          if (visibleCount > INITIAL_COUNT) {
+            return (
+              <button
+                onClick={() => setVisibleCount(INITIAL_COUNT)}
+                className="w-full text-sm text-gray-600 font-semibold py-3 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1 mt-3 border-t pt-3"
+              >
+                Show less
+                <ChevronUp className="w-4 h-4" />
+              </button>
+            );
+          }
+
+          // LOAD MORE
+          if (total > visibleCount) {
+            return (
+              <button
+                onClick={() => setVisibleCount(prev => prev + LOAD_STEP)}
+                className="w-full text-sm text-blue-600 font-semibold py-3 hover:bg-blue-50 rounded-lg flex items-center justify-center gap-1 mt-3 border-t pt-3"
+              >
+                Load more
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            );
+          }
+
+          return null;
+        })()}
+
+
+            </div>
+          </>
+        )}
+
+       {activeTab === 'parks' && (
+  <>
+    {/* ========== PARK RULES WIDGET ========== */}
+    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+      <h3 className="font-bold text-gray-900 mb-4">Park Rules</h3>
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <CheckCircle className="w-3 h-3 text-green-600" />
+          </div>
+          <p className="text-sm text-gray-700">Keep dogs on leashes unless in designated zones.</p>
+        </div>
+        <div className="flex items-start gap-3">
+          <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <CheckCircle className="w-3 h-3 text-green-600" />
+          </div>
+          <p className="text-sm text-gray-700">Dispose of trash in provided bins.</p>
+        </div>
+        <div className="flex items-start gap-3">
+          <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <X className="w-3 h-3 text-red-600" />
+          </div>
+          <p className="text-sm text-gray-700">No alcohol or smoking allowed in public parks.</p>
+        </div>
+      </div>
+    </div>
+
+    {/* ========== NEARBY PARKS WIDGET ========== */}
+    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+      <h3 className="font-bold text-gray-900 mb-4">Nearby Parks</h3>
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-lg bg-orange-200 flex-shrink-0"></div>
+          <div>
+            <p className="font-semibold text-sm text-gray-900">Sunset View Trail</p>
+            <p className="text-xs text-gray-500">0.8 miles away</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-lg bg-green-200 flex-shrink-0"></div>
+          <div>
+            <p className="font-semibold text-sm text-gray-900">Crestview Meadow</p>
+            <p className="text-xs text-gray-500">1.2 miles away</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-lg bg-blue-200 flex-shrink-0"></div>
+          <div>
+            <p className="font-semibold text-sm text-gray-900">Civic Plaza Park</p>
+            <p className="text-xs text-gray-500">1.6 miles away</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* ========== GREEN INITIATIVE WIDGET ========== */}
+    <div className="bg-white rounded-lg shadow-sm p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+          <Trees className="w-5 h-5 text-green-600" />
+        </div>
+        <h3 className="font-bold text-gray-900">Green Initiative</h3>
+      </div>
+      <p className="text-sm text-gray-600 mb-4">
+        Join our "Keep it Green" program to volunteer for park cleanups and tree planting events.
+      </p>
+      <button className="w-full border-2 border-green-600 text-green-600 py-2 rounded-lg font-semibold hover:bg-green-50 transition-colors">
+        Learn More
       </button>
-    );
-  }
-
-  // LOAD MORE
-  if (total > visibleCount) {
-    return (
-      <button
-        onClick={() => setVisibleCount(prev => prev + LOAD_STEP)}
-        className="w-full text-sm text-blue-600 font-semibold py-3 hover:bg-blue-50 rounded-lg flex items-center justify-center gap-1 mt-3 border-t pt-3"
-      >
-        Load more
-        <ChevronDown className="w-4 h-4" />
-      </button>
-    );
-  }
-
-  return null;
-})()}
-
-
     </div>
   </>
 )}
-
-
-            {activeTab === 'parks' && (
-              <>
-                {/* ========== QUICK FACILITIES WIDGET ========== */}
-                <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Trees className="w-6 h-6 text-green-600" />
-                    <h3 className="font-bold">Quick Access</h3>
-                  </div>
-                  <div className="space-y-2">
-                    <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors text-left">
-                      <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Trees className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">Find Nearest Park</p>
-                        <p className="text-xs text-gray-600">View map & directions</p>
-                      </div>
-                    </button>
-                    <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Calendar className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">Book Facilities</p>
-                        <p className="text-xs text-gray-600">Reserve for events</p>
-                      </div>
-                    </button>
-                    <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left">
-                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Activity className="w-5 h-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">Activity Programs</p>
-                        <p className="text-xs text-gray-600">Classes & workshops</p>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* ========== PARK HOURS WIDGET ========== */}
-                <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-                  <h3 className="font-bold mb-3">Operating Hours</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Central Park</span>
-                      <span className="font-semibold text-gray-900">6AM - 8PM</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Riverside Area</span>
-                      <span className="font-semibold text-gray-900">5AM - 7PM</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Sports Complex</span>
-                      <span className="font-semibold text-gray-900">6AM - 9PM</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                    <p className="text-xs text-green-800">
-                      <span className="font-semibold">🌟 Pro Tip:</span> Visit early morning for quieter outdoor activities!
-                    </p>
-                  </div>
-                </div>
-
-                {/* ========== ACTIVITIES & AMENITIES WIDGET ========== */}
-                <div className="bg-white rounded-lg shadow-sm p-4">
-                  <h3 className="font-bold mb-3">Available Amenities</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-gray-700">Basketball Courts (3)</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-gray-700">Playgrounds (2)</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-gray-700">Jogging Paths (5km)</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-gray-700">Picnic Areas (4)</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-gray-700">Event Pavilions (2)</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-gray-700">Restrooms (6)</span>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
           </aside>
         </div>
       </div>
