@@ -389,8 +389,24 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-green-400 rounded-full"></div>
-              <div className="text-left">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                              {userData?.profile_photo ? (
+                                <img 
+                                  src={userData?.profile_photo} 
+                                  alt="Profile" 
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    // Fallback to initials if image fails to load
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-sm">
+                                  {userData?.full_name?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || "U"}
+                                </span>
+                              )}
+                            </div>
+                 <div className="text-left">
                 <p className="text-sm font-semibold">{userData?.full_name || user?.email?.split('@')[0] || "User"}</p>
                 <p className="text-xs text-gray-500">{userData?.barangay}</p>
               </div>
@@ -622,7 +638,7 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
                     return (
                       <div key={msg.id} className={`flex gap-2 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                         <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${
-                          isAdmin ? 'bg-orange-100' : 'bg-green-400'
+                          isAdmin ? 'bg-orange-100' : 'bg-gradient-to-br from-blue-400 to-blue-600'
                         }`}>
                           {isAdmin ? (
                             <svg className="w-5 h-5 text-orange-600" fill="currentColor" viewBox="0 0 20 20">

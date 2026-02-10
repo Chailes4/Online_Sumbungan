@@ -94,6 +94,18 @@ const AdminDashboard = () => {
   const parkMapRef = useRef<HTMLDivElement>(null);
   const parkMapInstanceRef = useRef<any>(null);
 
+
+  // User Management state
+const [users, setUsers] = useState<any[]>([]);
+const [usersView, setUsersView] = useState("list");
+const [userFilterStatus, setUserFilterStatus] = useState("all");
+const [userFilterRole, setUserFilterRole] = useState("all");
+const [userSearchQuery, setUserSearchQuery] = useState("");
+const [userCurrentPage, setUserCurrentPage] = useState(1);
+const usersPerPage = 10;
+const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+
+
   // Alert form state
   const [alertForm, setAlertForm] = useState({
     urgency: 'critical',
@@ -168,6 +180,7 @@ const availableAmenities = [
       await fetchAlerts();
       await fetchAnnouncements(); 
       await fetchParks();
+      await fetchUsers();
       setLoading(false);
     };
     checkAdmin();
@@ -517,45 +530,46 @@ useEffect(() => {
   };
 
   const fetchStats = async () => {
-    const { count: pendingCount } = await supabase
-      .from("reports")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pending");
+  const { count: pendingCount } = await supabase
+    .from("reports")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending");
 
-    const { count: progressCount } = await supabase
-      .from("reports")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "in_progress");
+  const { count: progressCount } = await supabase
+    .from("reports")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "in_progress");
 
-    const { count: totalResolvedCount } = await supabase
-      .from("reports")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "resolved");
+  const { count: totalResolvedCount } = await supabase
+    .from("reports")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "resolved");
 
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setHours(23, 59, 59, 999);
+  // Update yesterday pending to exclude resolved
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+  const yesterdayEnd = new Date(yesterday);
+  yesterdayEnd.setHours(23, 59, 59, 999);
 
-    const { count: yesterdayPending } = await supabase
-      .from("reports")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pending")
-      .gte("created_at", yesterday.toISOString())
-      .lte("created_at", yesterdayEnd.toISOString());
+  const { count: yesterdayPending } = await supabase
+    .from("reports")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending")
+    .gte("created_at", yesterday.toISOString())
+    .lte("created_at", yesterdayEnd.toISOString());
 
-    const change = yesterdayPending
-      ? Math.round(((pendingCount || 0) - yesterdayPending) / yesterdayPending * 100)
-      : 0;
+  const change = yesterdayPending
+    ? Math.round(((pendingCount || 0) - yesterdayPending) / yesterdayPending * 100)
+    : 0;
 
-    setStats({
-      totalPending: pendingCount || 0,
-      inProgress: progressCount || 0,
-      totalResolved: totalResolvedCount || 0,
-      pendingChange: change
-    });
-  };
+  setStats({
+    totalPending: pendingCount || 0,
+    inProgress: progressCount || 0,
+    totalResolved: totalResolvedCount || 0,
+    pendingChange: change
+  });
+};
 
   const getCategoryLabel = (category: string) => {
     const labels: { [key: string]: string } = {
@@ -976,7 +990,8 @@ const handleToggleAnnouncementStatus = async (announcementId: string, currentSta
 
     const { data: allReports } = await supabase
       .from("reports")
-      .select("*");
+      .select("*")
+      .eq("status", "pending"); 
 
     if (allReports) {
       allReports.forEach((report: any) => {
@@ -1153,6 +1168,16 @@ const fetchParks = async () => {
   }
 };
 
+const fetchUsers = async () => {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (!error && data) {
+    setUsers(data);
+  }
+};
 // Parks functions - ADD ALL OF THESE
 
 const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1496,11 +1521,55 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
   }
 };
 
-  const priorityCounts = {
-    high: reports.filter(r => r.priority === 'high').length,
-    medium: reports.filter(r => r.priority === 'medium').length,
-    low: reports.filter(r => r.priority === 'low').length
+
+const handleToggleAdminStatus = async (userId: string, currentStatus: boolean) => {
+  if (!window.confirm(`Are you sure you want to ${currentStatus ? 'remove admin privileges from' : 'grant admin privileges to'} this user?`)) return;
+
+  const { error } = await supabase
+    .from("users")
+    .update({ is_admin: !currentStatus })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("Error updating admin status:", error);
+    alert("Failed to update admin status.");
+  } else {
+    alert(`User ${!currentStatus ? 'promoted to' : 'removed from'} admin successfully!`);
+    await fetchUsers();
+  }
+};
+
+const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
+  if (!window.confirm(`Are you sure you want to ${currentStatus ? 'deactivate' : 'activate'} this user?`)) return;
+
+  const { error } = await supabase
+    .from("users")
+    .update({ is_active: !currentStatus })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("Error updating user status:", error);
+    alert("Failed to update user status.");
+  } else {
+    alert(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+    await fetchUsers();
+  }
+};
+
+const getUserStats = () => {
+  return {
+    total: users.length,
+    active: users.filter(u => u.is_active !== false).length,
+    admins: users.filter(u => u.is_admin).length,
+    regular: users.filter(u => !u.is_admin).length
   };
+};0
+
+const priorityCounts = {
+  high: reports.filter(r => r.priority === 'high' && r.status === 'pending').length,
+  medium: reports.filter(r => r.priority === 'medium' && r.status === 'pending').length,
+  low: reports.filter(r => r.priority === 'low' && r.status === 'pending').length
+};
 
   if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
@@ -1711,7 +1780,7 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {reports.slice(0, 4).map((report) => (
+                  {reports.filter(r => r.status !== 'resolved').slice(0, 4).map((report) => (
                         <tr key={report.id} className="border-b border-gray-50 hover:bg-gray-50">
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
@@ -3433,6 +3502,424 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
         </div>
       </>
     )}
+  </main>
+)}
+
+
+{/* User Management Tab */}
+{activeTab === "users" && (
+  <main className="flex-1 overflow-auto p-8">
+    {usersView === "list" && (
+      <>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+            <p className="text-sm text-gray-500">Manage user accounts and permissions</p>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="bg-white rounded-xl p-6 shadow-sm border">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{getUserStats().total}</div>
+            <div className="text-sm text-gray-600">Total Users</div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{getUserStats().active}</div>
+            <div className="text-sm text-gray-600">Active Users</div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{getUserStats().admins}</div>
+            <div className="text-sm text-gray-600">Administrators</div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-gray-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{getUserStats().regular}</div>
+            <div className="text-sm text-gray-600">Regular Users</div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-xl shadow border p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={userSearchQuery}
+                onChange={(e) => {
+                  setUserSearchQuery(e.target.value);
+                  setUserCurrentPage(1);
+                }}
+                className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm"
+              />
+            </div>
+            <select
+              value={userFilterRole}
+              onChange={(e) => {
+                setUserFilterRole(e.target.value);
+                setUserCurrentPage(1);
+              }}
+              className="px-3 py-2 border rounded-lg text-sm"
+            >
+              <option value="all">All Roles</option>
+              <option value="admin">Administrators</option>
+              <option value="user">Regular Users</option>
+            </select>
+            <select
+              value={userFilterStatus}
+              onChange={(e) => {
+                setUserFilterStatus(e.target.value);
+                setUserCurrentPage(1);
+              }}
+              className="px-3 py-2 border rounded-lg text-sm"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Users Table */}
+        <div className="bg-white rounded-xl shadow border overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase">User</th>
+                <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase">Email</th>
+                <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase">Role</th>
+                <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase">Joined</th>
+                <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                <th className="p-4 text-center text-xs font-semibold text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const filteredUsers = users.filter(u => {
+                  const matchesSearch = userSearchQuery === "" || 
+                    u.full_name?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                    u.email?.toLowerCase().includes(userSearchQuery.toLowerCase());
+                  const matchesRole = userFilterRole === "all" || 
+                    (userFilterRole === "admin" ? u.is_admin : !u.is_admin);
+                  const matchesStatus = userFilterStatus === "all" ||
+                    (userFilterStatus === "active" ? u.is_active !== false : u.is_active === false);
+                  return matchesSearch && matchesRole && matchesStatus;
+                });
+
+                const indexOfLastUser = userCurrentPage * usersPerPage;
+                const indexOfFirstUser = indexOfLastUser - usersPerPage;
+                const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+                const totalUserPages = Math.ceil(filteredUsers.length / usersPerPage);
+
+                return (
+                  <>
+                    {currentUsers.map(u => {
+                      const joinDate = new Date(u.created_at);
+                      return (
+                        <tr key={u.id} className="border-b hover:bg-gray-50">
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                {u.full_name?.[0]?.toUpperCase() || 'U'}
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900">{u.full_name || 'Unknown'}</div>
+                                <div className="text-xs text-gray-500">ID: {u.id.slice(0, 8)}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4 text-sm text-gray-700">{u.email}</td>
+                          <td className="p-4">
+                            {u.is_admin ? (
+                              <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                                ADMIN
+                              </span>
+                            ) : (
+                              <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+                                USER
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4 text-sm text-gray-600">
+                            {joinDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </td>
+                          <td className="p-4">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                checked={u.is_active !== false}
+                                onChange={() => handleToggleUserStatus(u.id, u.is_active !== false)}
+                                className="sr-only peer" 
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                            <div className={`text-xs font-medium mt-1 ${u.is_active !== false ? 'text-blue-600' : 'text-gray-600'}`}>
+                              {u.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex justify-center gap-2">
+                              <button 
+                                onClick={() => setViewingUserId(u.id)}
+                                className="p-2 rounded hover:bg-blue-50 text-blue-600"
+                                title="View Details"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => handleToggleAdminStatus(u.id, u.is_admin)}
+                                className={`p-2 rounded ${u.is_admin ? 'hover:bg-red-50 text-red-600' : 'hover:bg-purple-50 text-purple-600'}`}
+                                title={u.is_admin ? 'Remove Admin' : 'Make Admin'}
+                              >
+                                <Users className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </>
+                );
+              })()}
+            </tbody>
+          </table>
+
+          <div className="flex items-center justify-between px-6 py-4 border-t">
+            <p className="text-sm text-gray-600">
+              Showing users {((userCurrentPage - 1) * usersPerPage) + 1} to {Math.min(userCurrentPage * usersPerPage, users.filter(u => {
+                const matchesSearch = userSearchQuery === "" || 
+                  u.full_name?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                  u.email?.toLowerCase().includes(userSearchQuery.toLowerCase());
+                const matchesRole = userFilterRole === "all" || 
+                  (userFilterRole === "admin" ? u.is_admin : !u.is_admin);
+                const matchesStatus = userFilterStatus === "all" ||
+                  (userFilterStatus === "active" ? u.is_active !== false : u.is_active === false);
+                return matchesSearch && matchesRole && matchesStatus;
+              }).length)} of {users.filter(u => {
+                const matchesSearch = userSearchQuery === "" || 
+                  u.full_name?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                  u.email?.toLowerCase().includes(userSearchQuery.toLowerCase());
+                const matchesRole = userFilterRole === "all" || 
+                  (userFilterRole === "admin" ? u.is_admin : !u.is_admin);
+                const matchesStatus = userFilterStatus === "all" ||
+                  (userFilterStatus === "active" ? u.is_active !== false : u.is_active === false);
+                return matchesSearch && matchesRole && matchesStatus;
+              }).length}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setUserCurrentPage(p => Math.max(p - 1, 1))}
+                disabled={userCurrentPage === 1}
+                className="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setUserCurrentPage(p => p + 1)}
+                disabled={userCurrentPage >= Math.ceil(users.filter(u => {
+                  const matchesSearch = userSearchQuery === "" || 
+                    u.full_name?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                    u.email?.toLowerCase().includes(userSearchQuery.toLowerCase());
+                  const matchesRole = userFilterRole === "all" || 
+                    (userFilterRole === "admin" ? u.is_admin : !u.is_admin);
+                  const matchesStatus = userFilterStatus === "all" ||
+                    (userFilterStatus === "active" ? u.is_active !== false : u.is_active === false);
+                  return matchesSearch && matchesRole && matchesStatus;
+                }).length / usersPerPage)}
+                className="px-3 py-1 border rounded text-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )}
+
+    {/* View User Details Modal */}
+    {viewingUserId && (() => {
+      const viewUser = users.find(u => u.id === viewingUserId);
+      if (!viewUser) return null;
+
+      const joinDate = formatDateTime(viewUser.created_at);
+      const userReports = reports.filter(r => r.user_id === viewingUserId);
+
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-white">
+              <h2 className="text-xl font-bold text-gray-900">User Details</h2>
+              <button
+                onClick={() => setViewingUserId(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* User Info */}
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                  {viewUser.full_name?.[0]?.toUpperCase() || 'U'}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">{viewUser.full_name || 'Unknown User'}</h3>
+                  <p className="text-gray-600">{viewUser.email}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    {viewUser.is_admin && (
+                      <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                        ADMIN
+                      </span>
+                    )}
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      viewUser.is_active !== false 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {viewUser.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-900">{userReports.length}</div>
+                  <div className="text-xs text-gray-600">Total Reports</div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {userReports.filter(r => r.status === 'pending').length}
+                  </div>
+                  <div className="text-xs text-gray-600">Pending</div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {userReports.filter(r => r.status === 'resolved').length}
+                  </div>
+                  <div className="text-xs text-gray-600">Resolved</div>
+                </div>
+              </div>
+
+              {/* Account Details */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-gray-900">Account Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-gray-500">User ID</div>
+                    <div className="text-sm font-medium text-gray-900">{viewUser.id}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Joined Date</div>
+                    <div className="text-sm font-medium text-gray-900">{joinDate.date}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Email Verified</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {viewUser.email_verified ? 'Yes' : 'No'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Last Sign In</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {viewUser.last_sign_in_at 
+                        ? formatDateTime(viewUser.last_sign_in_at).date
+                        : 'Never'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Reports */}
+              {userReports.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-gray-900">Recent Reports</h4>
+                  <div className="space-y-2">
+                    {userReports.slice(0, 5).map(report => (
+                      <div key={report.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-900">
+                            {getCategoryLabel(report.category)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {formatDate(report.created_at)}
+                          </div>
+                        </div>
+                        <div>{getStatusBadge(report.status)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 flex justify-between">
+              <button
+                onClick={() => setViewingUserId(null)}
+                className="px-4 py-2 border rounded-lg hover:bg-white"
+              >
+                Close
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    handleToggleAdminStatus(viewUser.id, viewUser.is_admin);
+                    setViewingUserId(null);
+                  }}
+                  className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                    viewUser.is_admin 
+                      ? 'bg-red-600 text-white hover:bg-red-700' 
+                      : 'bg-purple-600 text-white hover:bg-purple-700'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  {viewUser.is_admin ? 'Remove Admin' : 'Make Admin'}
+                </button>
+                <button
+                  onClick={() => {
+                    handleToggleUserStatus(viewUser.id, viewUser.is_active !== false);
+                    setViewingUserId(null);
+                  }}
+                  className={`px-4 py-2 rounded-lg ${
+                    viewUser.is_active !== false
+                      ? 'bg-gray-600 text-white hover:bg-gray-700'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                >
+                  {viewUser.is_active !== false ? 'Deactivate' : 'Activate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
   </main>
 )}
         

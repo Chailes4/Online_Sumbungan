@@ -126,7 +126,7 @@ const Login = () => {
               <div className="w-8 h-8 bg-white rounded-md flex items-center justify-center">
                 <Megaphone className="w-5 h-5 text-blue-600" />
               </div>
-              <span className="font-semibold">Sumbungan sa Plaridel</span>
+              <span className="font-semibold">Sumbungan ng Plaridel</span>
             </div>
 
           <h1 className="text-5xl font-extrabold mb-4">Be heard, Plaridel.</h1>

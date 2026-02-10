@@ -370,7 +370,23 @@ const EditReport = ({ reportId, onBack, onSave }: {
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-green-400 rounded-full"></div>
+           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                              {userData?.profile_photo ? (
+                                <img 
+                                  src={userData?.profile_photo} 
+                                  alt="Profile" 
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    // Fallback to initials if image fails to load
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-sm">
+                                  {userData?.full_name?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || "U"}
+                                </span>
+                              )}
+                            </div>
               <div className="text-left">
                 <p className="text-sm font-semibold">{userData?.full_name || user?.email?.split('@')[0] || "User"}</p>
                 <p className="text-xs text-gray-500">{userData?.barangay}</p>

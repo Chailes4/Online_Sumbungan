@@ -14,6 +14,7 @@ function App() {
         <Route path="/register" element={<Register />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />  
+            <Route path="/login" element={<Login />} />  
             <Route path="/file-report" element={<FileReport onBack={() => window.history.back()} />} />  
       </Routes>
     </BrowserRouter>

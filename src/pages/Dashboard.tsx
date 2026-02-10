@@ -12,7 +12,7 @@ import {
   ThumbsUp, ThumbsDown, Share2, LogOut, Calendar,
   Activity, CheckCircle, Clock, Megaphone, Trees, Send, Flame,
   ShieldCheck, Ambulance, Building2, Phone, Backpack, UserRound, Users,
-   ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight, X, XCircle, Eye
+   ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight, X, XCircle, Eye, Settings, Camera, Lock, Save 
 } from "lucide-react";
 
 
@@ -48,6 +48,7 @@ interface Post {
     full_name: string;
     email: string;
     username: string;
+    profile_photo?: string | null;
   };
 }
 
@@ -63,6 +64,7 @@ interface Comment {
     full_name: string;
     email: string;
     username: string;
+    profile_photo?: string | null;
   };
   replies?: Comment[]; // Add this to hold nested replies
 }
@@ -134,7 +136,7 @@ const [sortBy, setSortBy] = useState("date");
 const [currentPage, setCurrentPage] = useState(1);
 const reportsPerPage = 5;
 
-const [activeTab, setActiveTab] = useState<'feed' | 'reports' | 'alerts' | 'announcements' | 'parks'>('feed');
+const [activeTab, setActiveTab] = useState<'feed' | 'reports' | 'alerts' | 'announcements' | 'parks' | 'settings'>('feed');
 const [alerts, setAlerts] = useState<any[]>([]);
 const [alertsLoading, setAlertsLoading] = useState(true);
 
@@ -147,8 +149,21 @@ const [viewingAnnouncementId, setViewingAnnouncementId] = useState<string | null
 // Parks state
 const [parks, setParks] = useState<any[]>([]);
 const [parksLoading, setParksLoading] = useState(true);
-
 const [viewingParkId, setViewingParkId] = useState<string | null>(null);
+
+// Settings state
+const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+const [uploadingPhoto, setUploadingPhoto] = useState(false);
+const [fullName, setFullName] = useState("");
+const [username, setUsername] = useState("");
+const [email, setEmail] = useState("");
+const [phoneNumber, setPhoneNumber] = useState("");
+const [barangay, setBarangay] = useState("");
+const [currentPassword, setCurrentPassword] = useState("");
+const [newPassword, setNewPassword] = useState("");
+const [confirmPassword, setConfirmPassword] = useState("");
+const [savingProfile, setSavingProfile] = useState(false);
+const [updatingPassword, setUpdatingPassword] = useState(false);
 
 const getRelativeTime = (dateString: string) => {
   const now = new Date();
@@ -266,6 +281,140 @@ useEffect(() => {
   };
 }, []);
 
+
+useEffect(() => {
+  if (user && userData) {
+    setFullName(userData.full_name || "");
+    setUsername(userData.username || "");
+    setEmail(userData.email || user.email || "");
+    setPhoneNumber(userData.phone_number || "");
+    setBarangay(userData.barangay || "");
+    setProfilePhoto(userData.profile_photo || null);
+  }
+}, [user, userData]);
+
+const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file || !user) return;
+
+  if (!file.type.startsWith('image/')) {
+    alert("Please select an image file");
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    alert("File size should be less than 5MB");
+    return;
+  }
+
+  setUploadingPhoto(true);
+
+  try {
+    // Delete old photo if exists
+    if (profilePhoto && profilePhoto.includes('profile-photos')) {
+      const oldPhotoPath = profilePhoto.split('profile-photos/')[1];
+      await supabase.storage.from('profile-photos').remove([oldPhotoPath]);
+    }
+
+    // Upload new photo
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    const filePath = `${user.id}/${fileName}`; // Store in user's folder
+
+    const { error: uploadError } = await supabase.storage
+      .from('profile-photos')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('profile-photos')
+      .getPublicUrl(filePath);
+
+    setProfilePhoto(publicUrl);
+
+    // Use RPC function to update database
+    const { data, error: updateError } = await supabase
+      .rpc('update_user_profile_photo', { photo_url: publicUrl });
+
+    if (updateError) throw updateError;
+
+    alert("Profile photo updated successfully!");
+    await checkUser();
+  } catch (error: any) {
+    console.error("Error uploading photo:", error);
+    alert("Failed to upload photo: " + error.message);
+  } finally {
+    setUploadingPhoto(false);
+  }
+};
+
+const handleSaveProfile = async () => {
+  if (!user) return;
+
+  if (!fullName.trim()) {
+    alert("Full name is required");
+    return;
+  }
+
+  setSavingProfile(true);
+
+  try {
+    const { data, error } = await supabase.rpc('update_user_profile', {
+      p_full_name: fullName,
+      p_username: username,
+      p_phone_number: phoneNumber,
+      p_barangay: barangay
+    });
+
+    if (error) throw error;
+
+    alert("Profile updated successfully!");
+    await checkUser();
+  } catch (error: any) {
+    console.error("Error updating profile:", error);
+    alert("Failed to update profile: " + error.message);
+  } finally {
+    setSavingProfile(false);
+  }
+};
+
+const handleUpdatePassword = async () => {
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    alert("Please fill in all password fields");
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    alert("New passwords do not match");
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    alert("Password must be at least 6 characters long");
+    return;
+  }
+
+  setUpdatingPassword(true);
+
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) throw error;
+
+    alert("Password updated successfully!");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  } catch (error: any) {
+    console.error("Error updating password:", error);
+    alert("Failed to update password: " + error.message);
+  } finally {
+    setUpdatingPassword(false);
+  }
+};
   // ========== USER AUTHENTICATION ==========
   // Check current authenticated user and fetch their profile data
   const checkUser = async () => {
@@ -309,7 +458,7 @@ const fetchPosts = async () => {
     (postsData || []).map(async (post) => {
       const { data: userData } = await supabase
         .from("users")
-        .select("full_name, email, username")
+        .select("full_name, email, username, profile_photo")
         .eq("id", post.user_id)
         .maybeSingle();
       
@@ -686,7 +835,7 @@ const fetchParks = async () => {
 
       const { data: userData } = await supabase
         .from("users")
-        .select("full_name, email, username")
+        .select("full_name, email, username, profile_photo")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -899,7 +1048,7 @@ const fetchComments = async (postId: string) => {
     (commentsData || []).map(async (comment) => {
       const { data: userData } = await supabase
         .from("users")
-        .select("full_name, email, username")
+        .select("full_name, email, username, profile_photo")
         .eq("id", comment.user_id)
         .maybeSingle();
       
@@ -1515,19 +1664,41 @@ if (showFileReport) {
             </div>
           </div>
 
-          {/* User profile and notifications */}
-          <div className="flex items-center gap-4">
-            <button className="relative p-2 hover:bg-gray-100 rounded-full">
-              <Bell className="w-6 h-6" />
-            </button>
-            <div className="flex items-center gap-2">
-               <div className="w-10 h-10 bg-green-400 rounded-full"></div>
-              <div className="text-left">
-                <p className="text-sm font-semibold">{userData?.full_name || user?.email?.split('@')[0] || "User"}</p>
-                <p className="text-xs text-gray-500">{userData?.barangay}</p>
+         {/* User profile and notifications */}
+            <div className="flex items-center gap-4">
+              <button className="relative p-2 hover:bg-gray-100 rounded-full">
+                <Bell className="w-6 h-6" />
+              </button>
+              <button 
+                onClick={() => setActiveTab('settings')}
+                className="relative p-2 hover:bg-gray-100 rounded-full"
+              >
+                <Settings className="w-6 h-6" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                  {profilePhoto || userData?.profile_photo ? (
+                    <img 
+                      src={profilePhoto || userData?.profile_photo} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to initials if image fails to load
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <span className="text-sm">
+                      {userData?.full_name?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || "U"}
+                    </span>
+                  )}
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-semibold">{userData?.full_name || user?.email?.split('@')[0] || "User"}</p>
+                  <p className="text-xs text-gray-500">{userData?.barangay}</p>
+                </div>
               </div>
             </div>
-          </div>
         </div>
       </header>
 
@@ -1540,18 +1711,18 @@ if (showFileReport) {
           <aside className="col-span-3">
             <div className="bg-white rounded-lg shadow-sm p-4 space-y-2">
 
-              {/* Navigation menu */}
-        <button 
-          onClick={() => setActiveTab('feed')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-semibold ${
-            activeTab === 'feed' 
-              ? 'bg-blue-50 text-blue-600' 
-              : 'hover:bg-gray-50 text-gray-700'
-          }`}
-        >
-          <Home className="w-5 h-5" />
-          Home Feed
-        </button>
+            {/* Navigation menu */}
+              <button 
+                onClick={() => setActiveTab('feed')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-semibold ${
+                  activeTab === 'feed' 
+                    ? 'bg-blue-50 text-blue-600' 
+                    : 'hover:bg-gray-50 text-gray-700'
+                }`}
+              >
+                <Home className="w-5 h-5" />
+                Home Feed
+              </button>
 
               <button 
                 onClick={() => setActiveTab('reports')}
@@ -1625,10 +1796,8 @@ if (showFileReport) {
                       Local Attractions
                     </p>
                   </button>
+          
                 </div>
-
-
-
 
               {/* Logout button */}
               <div className="pt-4">
@@ -1673,7 +1842,22 @@ if (showFileReport) {
             {/* Modal content */}
             <div className="p-6">
               <div className="flex gap-3 mb-4">
-                <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                  {profilePhoto || userData?.profile_photo ? (
+                    <img 
+                      src={profilePhoto || userData?.profile_photo} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <span className="text-sm">
+                      {userData?.full_name?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || "U"}
+                    </span>
+                  )}
+                </div>
                 <div className="flex-1">
                   <p className="font-semibold">{userData?.full_name || "User"}</p>
                   <p className="text-sm text-gray-500">Public</p>
@@ -1688,6 +1872,8 @@ if (showFileReport) {
                 className="w-full bg-gray-50 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[150px]"
                 autoFocus
               />
+
+
 
               {/* Media preview (image or video) */}
               {selectedImage && (
@@ -1914,13 +2100,28 @@ if (showFileReport) {
   {/* ========== FEED TAB ========== */}
   {activeTab === 'feed' && (
     <>
-      <button
-        onClick={() => setShowPostModal(true)}
-        className="w-full bg-white rounded-lg shadow-sm p-4 mb-4 flex items-center gap-3 hover:bg-gray-50 transition-colors"
-      >
-        <div className="w-10 h-10 bg-green-400 rounded-full flex-shrink-0"></div>
-        <span className="text-gray-500 text-left flex-1">Share something with your neighbors...</span>
-      </button>
+          <button
+            onClick={() => setShowPostModal(true)}
+            className="w-full bg-white rounded-lg shadow-sm p-4 mb-4 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+          >
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+              {profilePhoto || userData?.profile_photo ? (
+                <img 
+                  src={profilePhoto || userData?.profile_photo} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <span className="text-sm">
+                  {userData?.full_name?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || "U"}
+                </span>
+              )}
+            </div>
+            <span className="text-gray-500 text-left flex-1">Share something with your neighbors...</span>
+          </button>
 
       {/* ========== CALL-TO-ACTION BANNER ========== */}
       <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4 mb-4 flex items-center justify-between">
@@ -1986,9 +2187,24 @@ if (showFileReport) {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-3 w-full">
                     {/* Avatar */}
-                    <div className={`flex-shrink-0 w-12 h-12 rounded-full ${post.is_anonymous ? 'bg-gray-400' : 'bg-orange-300'} flex items-center justify-center text-white font-bold text-lg`}>
-                      {post.is_anonymous ? getAnonymousName(post.id).slice(0, 2) : (post.users?.full_name?.slice(0, 2) || "U")}
-                    </div>
+
+                      <div className={`flex-shrink-0 w-12 h-12 rounded-full overflow-hidden ${post.is_anonymous ? 'bg-gray-400' : 'bg-gradient-to-br from-blue-400 to-blue-600'} flex items-center justify-center text-white font-bold text-lg`}>
+                        {post.is_anonymous ? (
+                          getAnonymousName(post.id).slice(0, 2)
+                        ) : post.users?.profile_photo ? (
+                          <img 
+                            src={post.users.profile_photo} 
+                            alt={post.users?.full_name || "User"}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.parentElement!.innerHTML = `<span class="text-lg">${post.users?.full_name?.slice(0, 2) || "U"}</span>`;
+                            }}
+                          />
+                        ) : (
+                          post.users?.full_name?.slice(0, 2) || "U"
+                        )}
+                      </div>
 
                     {/* Content */}
                     <div className="flex flex-col min-w-0">
@@ -2109,8 +2325,23 @@ if (showFileReport) {
               <div className="mt-4 pt-4 border-t">
                 {/* Comment Input */}
                 <div className="flex gap-3 mb-4">
-                  <div className="w-8 h-8 bg-green-400 rounded-full flex-shrink-0"></div>
-                  <div className="flex-1">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                      {profilePhoto || userData?.profile_photo ? (
+                        <img 
+                          src={profilePhoto || userData?.profile_photo} 
+                          alt="Profile" 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <span className="text-xs">
+                          {userData?.full_name?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || "U"}
+                        </span>
+                      )}
+                    </div>                  
+                    <div className="flex-1">
                     <textarea
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
@@ -2139,9 +2370,22 @@ if (showFileReport) {
                       <div key={comment.id} className="space-y-2">
                         {/* Main Comment */}
                         <div className="flex gap-3">
-                          <div className="w-8 h-8 bg-purple-300 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
-                            {comment.users?.full_name?.slice(0, 2) || "U"}
-                          </div>
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                              {comment.users?.profile_photo ? (
+                                <img 
+                                  src={comment.users.profile_photo} 
+                                  alt={comment.users?.full_name || "User"}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-xs">
+                                  {comment.users?.full_name?.slice(0, 2) || "U"}
+                                </span>
+                              )}
+                            </div>
                           <div className="flex-1">
                             <div className="bg-gray-100 rounded-lg px-3 py-2">
                               <div className="flex items-center justify-between">
@@ -2197,8 +2441,23 @@ if (showFileReport) {
                             {/* Reply Input */}
                             {replyingTo === comment.id && (
                               <div className="flex gap-2 mt-3">
-                                <div className="w-6 h-6 bg-green-400 rounded-full flex-shrink-0"></div>
-                                <div className="flex-1">
+                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                                    {profilePhoto || userData?.profile_photo ? (
+                                      <img 
+                                        src={profilePhoto || userData?.profile_photo} 
+                                        alt="Profile" 
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <span className="text-[10px]">
+                                        {userData?.full_name?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || "U"}
+                                      </span>
+                                    )}
+                                  </div>                                
+                                  <div className="flex-1">
                                   <textarea
                                     value={replyContent}
                                     onChange={(e) => setReplyContent(e.target.value)}
@@ -2236,8 +2495,21 @@ if (showFileReport) {
                           <div className="ml-11 space-y-2">
                             {comment.replies.map((reply) => (
                               <div key={reply.id} className="flex gap-3">
-                                <div className="w-7 h-7 bg-indigo-300 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
-                                  {reply.users?.full_name?.slice(0, 2) || "U"}
+                               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                                  {reply.users?.profile_photo ? (
+                                    <img 
+                                      src={reply.users.profile_photo} 
+                                      alt={reply.users?.full_name || "User"}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="text-xs">
+                                      {reply.users?.full_name?.slice(0, 2) || "U"}
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex-1">
                                   <div className="bg-gray-50 rounded-lg px-3 py-2">
@@ -3148,6 +3420,232 @@ if (showFileReport) {
     )}
   </div>
 )}
+
+{/* ========== SETTINGS TAB ========== */}
+{activeTab === 'settings' && (
+  <div className="space-y-6">
+    {/* Page Header */}
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">Resident Profile and Password Settings</h1>
+      <p className="text-sm text-gray-600">Manage your personal information and account security in one place.</p>
+    </div>
+
+    {/* Profile Photo Section */}
+    <div className="bg-white rounded-xl shadow-sm border p-6">
+      <div className="flex items-center gap-6">
+        <div className="relative">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-3xl font-bold overflow-hidden">
+            {profilePhoto ? (
+              <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <span>{fullName.slice(0, 2).toUpperCase() || "U"}</span>
+            )}
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+            <Camera className="w-4 h-4 text-white" />
+          </div>
+        </div>
+        
+        <div className="flex-1">
+          <h2 className="text-xl font-bold text-gray-900">{fullName || "User"}</h2>
+          <p className="text-sm text-gray-600 mb-3">Update your profile photo to help officials recognize you.</p>
+          
+          <label className="inline-block">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+              disabled={uploadingPhoto}
+            />
+            <span className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 cursor-pointer inline-flex items-center gap-2">
+              {uploadingPhoto ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Camera className="w-4 h-4" />
+                  Change Photo
+                </>
+              )}
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    {/* Personal Information Section */}
+    <div className="bg-white rounded-xl shadow-sm border p-6">
+      <div className="flex items-center gap-2 mb-6">
+        <UserRound className="w-5 h-5 text-blue-600" />
+        <h3 className="text-lg font-bold text-gray-900">Personal Information</h3>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Full Name
+          </label>
+          <input
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Sarah Jenkins"
+            className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Username
+          </label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="sarah.jenkins_23"
+            className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Email Address
+          </label>
+          <input
+            type="email"
+            value={email}
+            disabled
+            className="w-full bg-gray-100 border-0 rounded-lg px-4 py-3 text-sm text-gray-600 cursor-not-allowed"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Phone Number
+          </label>
+          <input
+            type="tel"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            placeholder="+1 (555) 123-4567"
+            className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Barangay
+          </label>
+          <input
+            type="text"
+            value={barangay}
+            onChange={(e) => setBarangay(e.target.value)}
+            placeholder="Barangay San Antonio"
+            className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={handleSaveProfile}
+          disabled={savingProfile}
+          className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          {savingProfile ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              Save Changes
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+
+    {/* Security Section */}
+    <div className="bg-white rounded-xl shadow-sm border p-6">
+      <div className="flex items-center gap-2 mb-2">
+        <Lock className="w-5 h-5 text-blue-600" />
+        <h3 className="text-lg font-bold text-gray-900">Security</h3>
+      </div>
+      
+      <div className="mb-6">
+        <h4 className="font-semibold text-gray-900 mb-1">Change Password</h4>
+        <p className="text-sm text-gray-600">Update your password regularly to maintain account security.</p>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Current Password
+          </label>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Enter current password"
+            className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              New Password
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Enter new password"
+              className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Confirm New Password
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm new password"
+              className="w-full bg-gray-50 border-0 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-start pt-2">
+          <button
+            onClick={handleUpdatePassword}
+            disabled={updatingPassword}
+            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {updatingPassword ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Updating...
+              </>
+            ) : (
+              "Update Password"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+
 </main>
 
           {/* ========== RIGHT SIDEBAR ========== */}
@@ -3802,6 +4300,166 @@ if (showFileReport) {
         </div>
       </>
     )}
+  </>
+)}
+
+{/* SETTINGS TAB SIDEBAR */}
+{activeTab === 'settings' && (
+  <>
+    {/* Account Security Tips */}
+    <div className="bg-blue-50 rounded-lg shadow-sm p-4 mb-4">
+      <div className="flex items-start gap-3 mb-3">
+        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+          <Lock className="w-4 h-4 text-white" />
+        </div>
+        <h3 className="font-bold text-gray-900">Security Tips</h3>
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-2">
+          <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-gray-700">Use a strong password with at least 8 characters</p>
+        </div>
+        <div className="flex items-start gap-2">
+          <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-gray-700">Include numbers, symbols, and mixed case letters</p>
+        </div>
+        <div className="flex items-start gap-2">
+          <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-gray-700">Never share your password with anyone</p>
+        </div>
+        <div className="flex items-start gap-2">
+          <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-gray-700">Change your password every 3-6 months</p>
+        </div>
+      </div>
+    </div>
+
+    {/* Profile Completeness */}
+    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+      <h3 className="font-bold text-gray-900 mb-3">Profile Completeness</h3>
+      
+      <div className="space-y-3">
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm text-gray-600">Profile Photo</span>
+            <span className="text-sm font-semibold text-gray-900">
+              {profilePhoto ? '✓' : '○'}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full transition-all ${profilePhoto ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
+            ></div>
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm text-gray-600">Full Name</span>
+            <span className="text-sm font-semibold text-gray-900">
+              {fullName ? '✓' : '○'}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full transition-all ${fullName ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
+            ></div>
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm text-gray-600">Phone Number</span>
+            <span className="text-sm font-semibold text-gray-900">
+              {phoneNumber ? '✓' : '○'}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full transition-all ${phoneNumber ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
+            ></div>
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm text-gray-600">Barangay</span>
+            <span className="text-sm font-semibold text-gray-900">
+              {barangay ? '✓' : '○'}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full transition-all ${barangay ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 pt-4 border-t">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-700">Overall</span>
+          <span className="text-sm font-bold text-blue-600">
+            {(() => {
+              const fields = [profilePhoto, fullName, phoneNumber, barangay];
+              const completed = fields.filter(f => f).length;
+              return Math.round((completed / fields.length) * 100);
+            })()}%
+          </span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-3 mt-2">
+          <div 
+            className="h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
+            style={{ 
+              width: `${(() => {
+                const fields = [profilePhoto, fullName, phoneNumber, barangay];
+                const completed = fields.filter(f => f).length;
+                return (completed / fields.length) * 100;
+              })()}%` 
+            }}
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    {/* Account Information */}
+    <div className="bg-white rounded-lg shadow-sm p-4">
+      <h3 className="font-bold text-gray-900 mb-3">Account Information</h3>
+      <div className="space-y-3">
+        <div>
+          <p className="text-xs text-gray-500 uppercase">Account Status</p>
+          <p className="text-sm font-semibold text-green-600 flex items-center gap-1 mt-1">
+            <CheckCircle className="w-4 h-4" />
+            Active
+          </p>
+        </div>
+        <div className="border-t pt-3">
+          <p className="text-xs text-gray-500 uppercase">Member Since</p>
+          <p className="text-sm font-semibold text-gray-900 mt-1">
+            {userData?.created_at 
+              ? new Date(userData.created_at).toLocaleDateString('en-US', { 
+                  month: 'long', 
+                  year: 'numeric' 
+                })
+              : 'N/A'
+            }
+          </p>
+        </div>
+        <div className="border-t pt-3">
+          <p className="text-xs text-gray-500 uppercase">Last Updated</p>
+          <p className="text-sm font-semibold text-gray-900 mt-1">
+            {userData?.updated_at 
+              ? new Date(userData.updated_at).toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric',
+                  year: 'numeric' 
+                })
+              : 'Never'
+            }
+          </p>
+        </div>
+      </div>
+    </div>
   </>
 )}
           </aside>
