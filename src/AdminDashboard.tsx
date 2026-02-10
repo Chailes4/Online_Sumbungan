@@ -89,6 +89,10 @@ const AdminDashboard = () => {
   const currentAnnouncements = filteredAnnouncements.slice(indexOfFirstAnnouncement, indexOfLastAnnouncement);
   const totalAnnouncementPages = Math.ceil(filteredAnnouncements.length / announcementsPerPage);
   
+  const [showParkLocationMap, setShowParkLocationMap] = useState(false);
+  const [parkMapMarker, setParkMapMarker] = useState<any>(null);
+  const parkMapRef = useRef<HTMLDivElement>(null);
+  const parkMapInstanceRef = useRef<any>(null);
 
   // Alert form state
   const [alertForm, setAlertForm] = useState({
@@ -122,15 +126,7 @@ const [parkForm, setParkForm] = useState({
   physical_address: '',
   description: '',
   amenities: [] as string[],
-  operating_hours: {
-    monday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-    tuesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-    wednesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-    thursday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-    friday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-    saturday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-    sunday: { open: '08:00 AM', close: '05:00 PM', closed: true }
-  },
+  operating_hours: '',  // Simple text field now!
   images: [] as string[],
   is_active: true
 });
@@ -143,34 +139,6 @@ const availableAmenities = [
   'Hiking Trails', 'Benches', 'Lake', 'Garden', 'Picnic Area',
   'Public Restroom', 'WiFi Zone', 'Parking Lot', 'Playground', 'Sports Court'
 ];
-
-
-// Helper function to convert 24-hour to 12-hour format
-const convertTo12Hour = (time24: string): string => {
-  if (!time24 || !time24.includes(':')) return time24;
-  const [hours, minutes] = time24.split(':');
-  const hour = parseInt(hours);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour % 12 || 12;
-  return `${hour12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
-};
-
-// Helper function to convert 12-hour to 24-hour format
-const convertTo24Hour = (time12: string): string => {
-  const match = time12.match(/(\d+):(\d+)\s*(AM|PM)/i);
-  if (!match) return time12;
-  
-  let [, hours, minutes, ampm] = match;
-  let hour = parseInt(hours);
-  
-  if (ampm.toUpperCase() === 'PM' && hour !== 12) {
-    hour += 12;
-  } else if (ampm.toUpperCase() === 'AM' && hour === 12) {
-    hour = 0;
-  }
-  
-  return `${hour.toString().padStart(2, '0')}:${minutes}`;
-};
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -227,6 +195,101 @@ const convertTo24Hour = (time12: string): string => {
     setTimeout(() => initAnnouncementMap(), 100);
   }
 }, [showLocationMap]);
+
+useEffect(() => {
+  if (showParkLocationMap && parkMapRef.current) {
+    setTimeout(() => initParkMap(), 100);
+  }
+}, [showParkLocationMap]);
+
+
+const initParkMap = () => {
+  if (!parkMapRef.current) return;
+  
+  const L = (window as any).L;
+  if (!L) {
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => renderParkMap();
+    document.head.appendChild(script);
+  } else {
+    renderParkMap();
+  }
+};
+
+const renderParkMap = () => {
+  if (!parkMapRef.current) return;
+  
+  const L = (window as any).L;
+  if (!L) return;
+
+  if (parkMapInstanceRef.current) {
+    parkMapInstanceRef.current.remove();
+  }
+
+  parkMapRef.current.innerHTML = '<div id="park-map-container" style="width: 100%; height: 100%;"></div>';
+
+  setTimeout(() => {
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
+
+    const map = L.map('park-map-container').setView([14.8815, 120.8671], 13);
+    parkMapInstanceRef.current = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    let marker: any = null;
+
+    map.on('click', function(e: any) {
+      const { lat, lng } = e.latlng;
+      
+      if (marker) {
+        map.removeLayer(marker);
+      }
+      
+      marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+      setParkMapMarker(marker);
+      
+      marker.on('dragend', function(e: any) {
+        const position = e.target.getLatLng();
+        reverseGeocodeForPark(position.lat, position.lng);
+      });
+      
+      reverseGeocodeForPark(lat, lng);
+    });
+
+    setTimeout(() => map.invalidateSize(), 100);
+  }, 50);
+};
+
+const reverseGeocodeForPark = async (lat: number, lng: number) => {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+    );
+    const data = await res.json();
+    if (data.display_name) {
+      setParkForm({...parkForm, physical_address: data.display_name});
+    }
+  } catch (error) {
+    console.error("Reverse geocoding failed", error);
+    setParkForm({...parkForm, physical_address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`});
+  }
+};
 
   const fetchAlerts = async () => {
     setAlertsLoading(true);
@@ -1123,35 +1186,6 @@ const toggleAmenity = (amenity: string) => {
   }));
 };
 
-const handleOperatingHoursChange = (day: string, field: string, value: string | boolean) => {
-  setParkForm(prev => ({
-    ...prev,
-    operating_hours: {
-      ...prev.operating_hours,
-      [day]: {
-        ...prev.operating_hours[day as keyof typeof prev.operating_hours],
-        [field]: field === 'open' || field === 'close' 
-          ? (typeof value === 'string' ? convertTo12Hour(value) : value)
-          : value
-      }
-    }
-  }));
-};
-
-const copyHours = (sourceDay: string) => {
-  const sourceHours = parkForm.operating_hours[sourceDay as keyof typeof parkForm.operating_hours];
-  const newHours = { ...parkForm.operating_hours };
-  
-  Object.keys(newHours).forEach(day => {
-    if (day !== sourceDay) {
-      newHours[day as keyof typeof newHours] = { ...sourceHours };
-    }
-  });
-
-  setParkForm(prev => ({ ...prev, operating_hours: newHours }));
-  alert(`Hours copied from ${sourceDay} to all other days!`);
-};
-
 const handleCreatePark = async () => {
   if (!parkForm.name || !parkForm.physical_address) {
     alert("Please fill in required fields (name and address).");
@@ -1250,6 +1284,16 @@ const handleCreatePark = async () => {
     } else {
       console.log('🎉 Park created successfully!');
       alert("Park created successfully with images!");
+      // Clean up map
+      setShowParkLocationMap(false);
+      if (parkMapMarker && parkMapInstanceRef.current) {
+        parkMapInstanceRef.current.removeLayer(parkMapMarker);
+        setParkMapMarker(null);
+      }
+      if (parkMapInstanceRef.current) {
+        parkMapInstanceRef.current.remove();
+        parkMapInstanceRef.current = null;
+      }
       setParksView("list");
       
       // Reset form
@@ -1258,19 +1302,13 @@ const handleCreatePark = async () => {
         physical_address: '',
         description: '',
         amenities: [],
-        operating_hours: {
-          monday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          tuesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          wednesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          thursday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          friday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          saturday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          sunday: { open: '08:00 AM', close: '05:00 PM', closed: true }
-        },
+        operating_hours: '',
         images: [],
         is_active: true
       });
       setParkImages([]);
+      setExistingImagesToDelete([]);
+      setNewImagesToUpload([]);
       await fetchParks();
     }
   } catch (error: any) {
@@ -1286,23 +1324,15 @@ const handleEditPark = (park: any) => {
     physical_address: park.physical_address,
     description: park.description || '',
     amenities: park.amenities || [],
-    operating_hours: park.operating_hours || {
-      monday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-      tuesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-      wednesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-      thursday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-      friday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-      saturday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-      sunday: { open: '08:00 AM', close: '05:00 PM', closed: true }
-    },
+    operating_hours: park.operating_hours || '',  // Simple string!
     images: park.images || [],
     is_active: park.is_active
   });
   setEditingParkId(park.id);
-  setParkImages([]); // Clear new images
-  setExistingImagesToDelete([]); // Clear delete queue
+  setParkImages([]);
+  setExistingImagesToDelete([]);
   setParksView("create");
-};
+};;
 
 const handleUpdatePark = async () => {
   if (!parkForm.name || !parkForm.physical_address) {
@@ -1399,6 +1429,16 @@ const handleUpdatePark = async () => {
     } else {
       console.log('🎉 Park updated successfully!');
       alert("Park updated successfully!");
+      // Clean up map
+      setShowParkLocationMap(false);
+      if (parkMapMarker && parkMapInstanceRef.current) {
+        parkMapInstanceRef.current.removeLayer(parkMapMarker);
+        setParkMapMarker(null);
+      }
+      if (parkMapInstanceRef.current) {
+        parkMapInstanceRef.current.remove();
+        parkMapInstanceRef.current = null;
+      }
       setParksView("list");
       setEditingParkId(null);
       
@@ -1408,20 +1448,13 @@ const handleUpdatePark = async () => {
         physical_address: '',
         description: '',
         amenities: [],
-        operating_hours: {
-          monday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          tuesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          wednesday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          thursday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          friday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          saturday: { open: '08:00 AM', close: '05:00 PM', closed: false },
-          sunday: { open: '08:00 AM', close: '05:00 PM', closed: true }
-        },
+        operating_hours: '',
         images: [],
         is_active: true
       });
       setParkImages([]);
       setExistingImagesToDelete([]);
+      setNewImagesToUpload([]);
       await fetchParks();
     }
   } catch (error: any) {
@@ -1560,7 +1593,7 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
             }`}
           >
             <Trees className="w-5 h-5" />
-            <span className="font-medium">Parks & Recreation</span>
+            <span className="font-medium">Local Attractions</span>
           </button>
           <button
             onClick={() => setActiveTab("users")}
@@ -2956,7 +2989,7 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
       <>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Parks & Recreation Directory</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Local Attractions Directory</h1>
             <p className="text-sm text-gray-500">Manage public parks, facilities, and recreational areas</p>
           </div>
           <button
@@ -2964,7 +2997,7 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
           >
             <Plus className="w-4 h-4" />
-            Add New Park
+            Add New Attractions
           </button>
         </div>
 
@@ -3037,15 +3070,11 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
                 )}
 
                 {/* Operating Hours Today */}
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-4">
-                  <Clock className="w-3.5 h-3.5" />
-                  {(() => {
-                    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-                    const hours = park.operating_hours?.[today as keyof typeof park.operating_hours];
-                    return hours?.closed 
-                      ? <span className="text-red-600 font-medium">Closed Today</span>
-                      : <span>Open {hours?.open} - {hours?.close}</span>;
-                  })()}
+                <div className="flex items-start gap-2 text-xs text-gray-500 mb-4">
+                  <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                  <div className="whitespace-pre-line line-clamp-2">
+                    {park.operating_hours || 'Hours not specified'}
+                  </div>
                 </div>
 
                 {/* Actions */}
@@ -3072,7 +3101,7 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
         {parks.length === 0 && (
           <div className="text-center py-16">
             <Trees className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No parks added yet. Click "Add New Park" to get started.</p>
+            <p className="text-gray-500">No parks added yet. Click "Add New Attractions" to get started.</p>
           </div>
         )}
       </>
@@ -3092,10 +3121,10 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {editingParkId ? 'Edit Park Details' : 'Add New Park Details'}
+              {editingParkId ? 'Edit Attractions Details' : 'Add New Attractions Details'}
             </h1>
             <p className="text-sm text-gray-500">
-              {editingParkId ? 'Update park information' : 'Create a new public park listing for the directory'}
+              {editingParkId ? 'Update attractions information' : 'Create a new public attractions listing for the directory'}
             </p>
           </div>
         </div>
@@ -3123,17 +3152,83 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Physical Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    value={parkForm.physical_address}
-                    onChange={(e) => setParkForm({...parkForm, physical_address: e.target.value})}
-                    className="w-full px-4 py-2 border rounded-lg"
-                    placeholder="Street name, District, Zip Code"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Physical Address <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        value={parkForm.physical_address}
+                        onChange={(e) => setParkForm({...parkForm, physical_address: e.target.value})}
+                        className="flex-1 px-4 py-2 border rounded-lg"
+                        placeholder="Street name, District, Zip Code"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowParkLocationMap(!showParkLocationMap);
+                          if (!showParkLocationMap) {
+                            setTimeout(() => {
+                              if (parkMapRef.current) {
+                                renderParkMap();
+                              }
+                            }, 100);
+                          }
+                        }}
+                        className={`px-4 py-2 border rounded-lg flex items-center gap-2 ${
+                          showParkLocationMap ? 'bg-green-50 border-green-500 text-green-600' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <MapPin className="w-4 h-4" />
+                        {showParkLocationMap ? 'Hide Map' : 'Pick on Map'}
+                      </button>
+                    </div>
+                    
+                    <p className="text-xs text-gray-500 mt-1">
+                      {showParkLocationMap 
+                        ? 'Click anywhere on the map or drag the marker to select the park location' 
+                        : 'Type the address or use the map picker'}
+                    </p>
+                        
+                    {showParkLocationMap && (
+                      <div className="mt-3 border rounded-lg overflow-hidden relative">
+                        {/* Drop Pin Indicator */}
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-12 z-10 flex flex-col items-center pointer-events-none">
+                          <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg mb-1">
+                            CLICK TO PIN LOCATION
+                          </div>
+                          <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                          </svg>
+                        </div>
+
+                        {/* Map Container */}
+                        <div ref={parkMapRef} className="w-full h-80"></div>
+                        
+                        {/* Map Footer */}
+                        <div className="bg-gray-50 p-3 border-t flex items-center justify-between">
+                          <span className="text-xs text-gray-600">
+                            {parkMapMarker ? '✓ Location selected - Drag marker to adjust' : 'Click anywhere on the map to select location'}
+                          </span>
+                          {parkMapMarker && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (parkMapInstanceRef.current && parkMapMarker) {
+                                  parkMapInstanceRef.current.removeLayer(parkMapMarker);
+                                  setParkMapMarker(null);
+                                  setParkForm({...parkForm, physical_address: ''});
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-700 font-medium text-xs"
+                            >
+                              Clear Location
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
@@ -3181,7 +3276,7 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
                 />
                 <label htmlFor="park-images" className="cursor-pointer">
                   <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-sm text-gray-600 mb-1">Upload Park Gallery</p>
+                  <p className="text-sm text-gray-600 mb-1">Upload Attraction Gallery</p>
                   <p className="text-xs text-gray-400">Drag and drop images here, or click to browse. Max 5MB per file.</p>
                 </label>
               </div>
@@ -3279,63 +3374,28 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
             </div>
 
             {/* Operating Hours */}
+     {/* Operating Hours */}
             <div className="bg-white rounded-xl shadow border p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Operating Hours</h2>
-                <button
-                  onClick={() => {
-                    const firstDay = Object.keys(parkForm.operating_hours)[0];
-                    copyHours(firstDay);
-                  }}
-                  className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-                >
-                  <Copy className="w-3 h-3" />
-                  Copy to All
-                </button>
-              </div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Operating Hours</h2>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Attraction Hours
+                </label>
+                <textarea
+                  value={parkForm.operating_hours}
+                  onChange={(e) => setParkForm({...parkForm, operating_hours: e.target.value})}
+                  rows={6}
+                  className="w-full px-4 py-2 border rounded-lg"
+                  placeholder="e.g.,
+            Monday - Friday: 8:00 AM - 5:00 PM
+            Saturday: 9:00 AM - 6:00 PM
+            Sunday: Closed
 
-              <div className="space-y-3">
-                {Object.entries(parkForm.operating_hours).map(([day, hours]) => (
-                  <div key={day} className="border rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium capitalize">{day}</span>
-                      <label className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">Closed</span>
-                        <input
-                          type="checkbox"
-                          checked={hours.closed}
-                          onChange={(e) => handleOperatingHoursChange(day, 'closed', e.target.checked)}
-                          className="rounded"
-                        />
-                      </label>
-                    </div>
-                    
-                   {!hours.closed && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-xs text-gray-500">Open</label>
-                          <input
-                            type="time"
-                            value={convertTo24Hour(hours.open)}
-                            onChange={(e) => handleOperatingHoursChange(day, 'open', e.target.value)}
-                            className="w-full px-2 py-1 text-sm border rounded"
-                          />
-                          <div className="text-xs text-gray-600 mt-0.5">{hours.open}</div>
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-500">Close</label>
-                          <input
-                            type="time"
-                            value={convertTo24Hour(hours.close)}
-                            onChange={(e) => handleOperatingHoursChange(day, 'close', e.target.value)}
-                            className="w-full px-2 py-1 text-sm border rounded"
-                          />
-                          <div className="text-xs text-gray-600 mt-0.5">{hours.close}</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+            Or simply: Open Daily 24/7"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Enter the attraction's operating hours in any format
+                </p>
               </div>
             </div>
           </div>
@@ -3344,20 +3404,31 @@ const toggleParkStatus = async (parkId: string, currentStatus: boolean) => {
         {/* Actions */}
         <div className="flex items-center justify-between mt-6 bg-white rounded-xl shadow border p-6">
           <button
-            onClick={() => {
-              setParksView("list");
-              setEditingParkId(null);
-            }}
-            className="px-6 py-2 border rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
+              onClick={() => {
+                setParksView("list");
+                setEditingParkId(null);
+                
+                // Clean up map
+                setShowParkLocationMap(false);
+                if (parkMapMarker && parkMapInstanceRef.current) {
+                  parkMapInstanceRef.current.removeLayer(parkMapMarker);
+                  setParkMapMarker(null);
+                }
+                if (parkMapInstanceRef.current) {
+                  parkMapInstanceRef.current.remove();
+                  parkMapInstanceRef.current = null;
+                }
+              }}
+              className="px-6 py-2 border rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
           <button
             onClick={editingParkId ? handleUpdatePark : handleCreatePark}
             disabled={uploadingImages}
             className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
           >
-            {uploadingImages ? 'Uploading...' : (editingParkId ? 'Update Park' : 'Create Park Listing')}
+            {uploadingImages ? 'Uploading...' : (editingParkId ? 'Update Attraction' : 'Create Attraction Listing')}
           </button>
         </div>
       </>

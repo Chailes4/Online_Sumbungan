@@ -144,6 +144,11 @@ const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 const [currentMonth, setCurrentMonth] = useState(new Date());
 const [viewingAnnouncementId, setViewingAnnouncementId] = useState<string | null>(null);
 
+// Parks state
+const [parks, setParks] = useState<any[]>([]);
+const [parksLoading, setParksLoading] = useState(true);
+
+const [viewingParkId, setViewingParkId] = useState<string | null>(null);
 
 const getRelativeTime = (dateString: string) => {
   const now = new Date();
@@ -242,7 +247,24 @@ useEffect(() => {
   setVisibleCount(3);
 }, [selectedDate]);
 
+useEffect(() => {
+  fetchParks();
+  
+  // Subscribe to real-time updates
+  const subscription = supabase
+    .channel('parks_changes')
+    .on('postgres_changes', 
+      { event: '*', schema: 'public', table: 'parks' },
+      () => {
+        fetchParks();
+      }
+    )
+    .subscribe();
 
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
 
   // ========== USER AUTHENTICATION ==========
   // Check current authenticated user and fetch their profile data
@@ -559,6 +581,20 @@ const getStatusIcon = (status: string) => {
     setSelectedImage(null);
     setSelectedMediaType(null);
   };
+
+const fetchParks = async () => {
+  setParksLoading(true);
+  const { data, error } = await supabase
+    .from("parks")
+    .select("*")
+    .eq("is_active", true) // Only fetch active parks
+    .order("created_at", { ascending: false });
+
+  if (!error && data) {
+    setParks(data);
+  }
+  setParksLoading(false);
+};
 
 
 // ========== POST DELETION ==========
@@ -1586,7 +1622,7 @@ if (showFileReport) {
                       <Trees className="w-5 h-5 text-green-600" />
                     </div>
                     <p className="font-semibold text-gray-900">
-                      Parks & Recreation
+                      Local Attractions
                     </p>
                   </button>
                 </div>
@@ -2839,147 +2875,277 @@ if (showFileReport) {
 )}
 
 
-
-  {/* ========== PARKS & RECREATION TAB ========== */}
-  {/* ========== PARKS & RECREATION TAB ========== */}
+{/* ========== PARKS & RECREATION TAB ========== */}
 {activeTab === 'parks' && (
   <div className="space-y-6">
-    {/* Header */}
-    <div className="bg-white rounded-lg shadow-sm p-6 flex items-start justify-between">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Parks & Recreation Directory</h1>
-        <p className="text-gray-600">Discover and explore our vibrant, green public spaces.</p>
-      </div>
-      <button className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 flex items-center gap-2 whitespace-nowrap">
-        <Calendar className="w-5 h-5" />
-        Reserve a Facility
-      </button>
-    </div>
+    {/* Show park details if one is selected */}
+    {viewingParkId ? (() => {
+      const park = parks.find(p => p.id === viewingParkId);
+      if (!park) return null;
 
-    {/* Park Cards */}
-    <div className="space-y-6">
-      {/* Westside Botanical Park */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        {/* Park Image */}
-        <div className="relative h-64 bg-gradient-to-br from-green-400 to-green-600">
-          <img 
-            src="https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=800&h=400&fit=crop" 
-            alt="Westside Botanical Park"
-            className="w-full h-full object-cover"
-          />
-          <span className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold">
-            OPEN NOW
-          </span>
-        </div>
-
-        {/* Park Info */}
-        <div className="p-6 relative">
-          {/* Location Pin Button */}
-          <button className="absolute top-6 right-6 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 shadow-lg">
-            <MapPin className="w-6 h-6" />
+      return (
+        <div className="space-y-6">
+          {/* Back Button */}
+          <button
+            onClick={() => setViewingParkId(null)}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            Back to Attractions Directory
           </button>
 
-          <h3 className="text-xl font-bold text-gray-900 mb-1">Westside Botanical Park</h3>
-          <p className="text-sm text-gray-500 mb-4">123 Flora Way, West District</p>
+          {/* Hero Image */}
+          <div className="relative h-64 sm:h-80 rounded-xl overflow-hidden shadow-lg">
+            {park.images && park.images.length > 0 ? (
+              <img 
+                src={park.images[0]} 
+                alt={park.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                <Trees className="w-20 h-20 text-white opacity-50" />
+              </div>
+            )}
+            
+            {/* Overlay Title */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
+              <h1 className="text-3xl font-bold text-white mb-2">{park.name}</h1>
+              <div className="flex items-center gap-2 text-white/90">
+                <MapPin className="w-5 h-5" />
+                <span className="text-sm">{park.physical_address}</span>
+              </div>
+            </div>
+
+            {/* Get Directions Button */}
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                const address = encodeURIComponent(park.physical_address);
+                window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+              }}
+              className="absolute top-4 right-4 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 shadow-lg flex items-center gap-2"
+            >
+              <MapPin className="w-5 h-5" />
+              Get Directions
+            </button>
+          </div>
+
+          {/* Main Content - Full Width */}
+          <div className="space-y-6">
+            {/* About the Park */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Info className="w-5 h-5 text-blue-600" />
+                About the Attractions
+              </h2>
+              {park.description ? (
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {park.description}
+                </p>
+              ) : (
+                <p className="text-gray-500 italic">No description available.</p>
+              )}
+            </div>
+
+            {/* Amenities */}
+            {park.amenities && park.amenities.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h2 className="text-xl font-bold mb-4">Amenities</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                  {park.amenities.map((amenity: string, index: number) => {
+                    const amenityIcons: { [key: string]: any } = {
+                      'Hiking Trails': Trees,
+                      'Benches': Users,
+                      'Lake': Activity,
+                      'Garden': Trees,
+                      'Picnic Area': Users,
+                      'Public Restroom': Building2,
+                      'WiFi Zone': Activity,
+                      'Parking Lot': MapPin,
+                      'Playground': Users,
+                      'Sports Court': Activity
+                    };
+                    const Icon = amenityIcons[amenity] || CheckCircle;
+                    
+                    return (
+                      <div key={index} className="flex flex-col items-center gap-2 p-3 bg-green-50 rounded-lg">
+                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                          <Icon className="w-6 h-6 text-green-600" />
+                        </div>
+                        <span className="text-xs text-center font-medium text-gray-700">{amenity}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Location Map */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-xl font-bold mb-4">Location</h2>
+              <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  style={{ border: 0 }}
+                  src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(park.physical_address)}`}
+                  allowFullScreen
+                />
+              </div>
+            </div>
+
+            {/* Image Gallery */}
+            {park.images && park.images.length > 1 && (
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h2 className="text-xl font-bold mb-4">Photo Gallery</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {park.images.map((imageUrl: string, index: number) => (
+                    <img
+                      key={index}
+                      src={imageUrl}
+                      alt={`${park.name} ${index + 1}`}
+                      className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => window.open(imageUrl, '_blank')}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    })() : (
+      <>
+        {/* Parks List View */}
+        <div className="bg-white rounded-lg shadow-sm p-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Local Attractions Directory</h1>
+            <p className="text-gray-600">Discover and explore our vibrant, green public spaces.</p>
+          </div>
+          {!parksLoading && parks.length > 0 && (
+            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+              {parks.length} Active Attractions{parks.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
+        {/* Loading State */}
+        {parksLoading && (
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+            <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading parks...</p>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!parksLoading && parks.length === 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+            <Trees className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">No Parks Available</h3>
+            <p className="text-gray-500">Check back later for updates on our public parks and recreation areas.</p>
+          </div>
+        )}
+
+      {/* Park Cards */}
+{!parksLoading && parks.length > 0 && (
+  <div className="space-y-6">
+    {parks.map((park) => (
+      <div 
+        key={park.id} 
+        onClick={() => setViewingParkId(park.id)}
+        className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
+      >
+        {/* Park Image - Top */}
+        <div className="relative h-64 bg-gradient-to-br from-green-400 to-green-600">
+          {park.images && park.images.length > 0 ? (
+            <img 
+              src={park.images[0]} 
+              alt={park.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Trees className="w-20 h-20 text-white opacity-50" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+            <span className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+              View Details
+            </span>
+          </div>
+        </div>
+
+        {/* Park Info - Bottom */}
+        <div className="p-6">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold text-gray-900 group-hover:text-green-600 transition-colors mb-3">
+                {park.name}
+              </h3>
+              
+              <div className="flex items-center gap-3">
+                <div className="flex items-start gap-2 text-gray-600 flex-1">
+                  <span className="text-sm">{park.physical_address}</span>
+                </div>
+                
+                {/* Get Directions Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const address = encodeURIComponent(park.physical_address);
+                  window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+                }}
+                className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors flex-shrink-0 shadow-md"
+                title="Get Directions"
+              >
+                <MapPin className="w-5 h-5" />
+              </button>
+              </div>
+            </div>
+                      </div>
+
+          {park.description && (
+            <p className="text-gray-700 mb-4 line-clamp-2 leading-relaxed">
+              {park.description}
+            </p>
+          )}
 
           {/* Amenities */}
-          <div className="flex gap-6 text-sm text-gray-700">
-            <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-green-600" />
-              <span>Hiking Trails</span>
+          {park.amenities && park.amenities.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Amenities</p>
+              <div className="flex flex-wrap gap-2">
+                {park.amenities.slice(0, 6).map((amenity: string, index: number) => (
+                  <span key={index} className="px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
+                    {amenity}
+                  </span>
+                ))}
+                {park.amenities.length > 6 && (
+                  <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                    +{park.amenities.length - 6} more
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-green-600" />
-              <span>Benches</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-green-600" />
-              <span>Lake</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Trees className="w-5 h-5 text-green-600" />
-              <span>Garden</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
-
-      {/* Riverside Recreation Area */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="relative h-64 bg-gradient-to-br from-blue-400 to-blue-600">
-          <img 
-            src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=400&fit=crop" 
-            alt="Riverside Recreation Area"
-            className="w-full h-full object-cover"
-          />
-          <span className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold">
-            OPEN NOW
-          </span>
-        </div>
-
-        <div className="p-6 relative">
-          <button className="absolute top-6 right-6 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 shadow-lg">
-            <MapPin className="w-6 h-6" />
-          </button>
-
-          <h3 className="text-xl font-bold text-gray-900 mb-1">Riverside Recreation Area</h3>
-          <p className="text-sm text-gray-500 mb-4">River Road, East District</p>
-
-          <div className="flex gap-6 text-sm text-gray-700">
-            <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-green-600" />
-              <span>Walking Trails</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-green-600" />
-              <span>Picnic Areas</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-green-600" />
-              <span>Fishing Spots</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Community Sports Complex */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="relative h-64 bg-gradient-to-br from-orange-400 to-orange-600">
-          <img 
-            src="https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&h=400&fit=crop" 
-            alt="Community Sports Complex"
-            className="w-full h-full object-cover"
-          />
-          <span className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold">
-            OPEN NOW
-          </span>
-        </div>
-
-        <div className="p-6 relative">
-          <button className="absolute top-6 right-6 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 shadow-lg">
-            <MapPin className="w-6 h-6" />
-          </button>
-
-          <h3 className="text-xl font-bold text-gray-900 mb-1">Community Sports Complex</h3>
-          <p className="text-sm text-gray-500 mb-4">Sports Avenue, North District</p>
-
-          <div className="flex gap-6 text-sm text-gray-700">
-            <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-green-600" />
-              <span>Basketball Courts</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-green-600" />
-              <span>Volleyball Courts</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-green-600" />
-              <span>Covered Gym</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    ))}
+  </div>
+)}
+      </>
+    )}
   </div>
 )}
 </main>
@@ -3523,77 +3689,119 @@ if (showFileReport) {
             </div>
           </>
         )}
-
-       {activeTab === 'parks' && (
+{activeTab === 'parks' && (
   <>
-    {/* ========== PARK RULES WIDGET ========== */}
-    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-      <h3 className="font-bold text-gray-900 mb-4">Park Rules</h3>
-      <div className="space-y-3">
-        <div className="flex items-start gap-3">
-          <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <CheckCircle className="w-3 h-3 text-green-600" />
-          </div>
-          <p className="text-sm text-gray-700">Keep dogs on leashes unless in designated zones.</p>
-        </div>
-        <div className="flex items-start gap-3">
-          <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <CheckCircle className="w-3 h-3 text-green-600" />
-          </div>
-          <p className="text-sm text-gray-700">Dispose of trash in provided bins.</p>
-        </div>
-        <div className="flex items-start gap-3">
-          <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <X className="w-3 h-3 text-red-600" />
-          </div>
-          <p className="text-sm text-gray-700">No alcohol or smoking allowed in public parks.</p>
-        </div>
-      </div>
-    </div>
+    {viewingParkId ? (() => {
+      const park = parks.find(p => p.id === viewingParkId);
+      if (!park) return null;
 
-    {/* ========== NEARBY PARKS WIDGET ========== */}
-    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-      <h3 className="font-bold text-gray-900 mb-4">Nearby Parks</h3>
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg bg-orange-200 flex-shrink-0"></div>
-          <div>
-            <p className="font-semibold text-sm text-gray-900">Sunset View Trail</p>
-            <p className="text-xs text-gray-500">0.8 miles away</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg bg-green-200 flex-shrink-0"></div>
-          <div>
-            <p className="font-semibold text-sm text-gray-900">Crestview Meadow</p>
-            <p className="text-xs text-gray-500">1.2 miles away</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg bg-blue-200 flex-shrink-0"></div>
-          <div>
-            <p className="font-semibold text-sm text-gray-900">Civic Plaza Park</p>
-            <p className="text-xs text-gray-500">1.6 miles away</p>
-          </div>
-        </div>
-      </div>
-    </div>
+      return (
+        <>
 
-    {/* ========== GREEN INITIATIVE WIDGET ========== */}
-    <div className="bg-white rounded-lg shadow-sm p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-          <Trees className="w-5 h-5 text-green-600" />
+           {/* Park Rules */}
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <h3 className="font-bold text-gray-900 mb-4">Attractions Rules</h3>
+            <div className="space-y-3">
+             <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <CheckCircle className="w-3 h-3 text-green-600" />
+                  </div>
+                  <p className="text-sm text-gray-700">Respect posted operating hours and facility guidelines.</p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <CheckCircle className="w-3 h-3 text-green-600" />
+                  </div>
+                  <p className="text-sm text-gray-700">Maintain cleanliness and respect shared public spaces.</p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <CheckCircle className="w-3 h-3 text-green-600" />
+                  </div>
+                  <p className="text-sm text-gray-700">Be respectful of cultural, religious, and historical sites.</p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <X className="w-3 h-3 text-red-600" />
+                  </div>
+                  <p className="text-sm text-gray-700">Do not vandalize, deface, or damage public property.</p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <X className="w-3 h-3 text-red-600" />
+                  </div>
+                  <p className="text-sm text-gray-700">Avoid excessive noise that may disturb others.</p>
+                </div>
+
+            </div>
+          </div>
+          
+          {/* Operating Hours */}
+          <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-600" />
+              Operating Hours
+            </h3>
+            {park.operating_hours ? (
+              <div className="space-y-2">
+                <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                  {park.operating_hours}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 italic">Hours not specified</p>
+            )}
+          </div>
+        </>
+      );
+    })() : (
+      <>
+        {/* Park Rules - List View */}
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+          <h3 className="font-bold text-gray-900 mb-4">Attractions Rules</h3>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <CheckCircle className="w-3 h-3 text-green-600" />
+              </div>
+              <p className="text-sm text-gray-700">Keep dogs on leashes unless in designated zones.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <CheckCircle className="w-3 h-3 text-green-600" />
+              </div>
+              <p className="text-sm text-gray-700">Dispose of trash in provided bins.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <X className="w-3 h-3 text-red-600" />
+              </div>
+              <p className="text-sm text-gray-700">No alcohol or smoking allowed in public parks.</p>
+            </div>
+          </div>
         </div>
-        <h3 className="font-bold text-gray-900">Green Initiative</h3>
-      </div>
-      <p className="text-sm text-gray-600 mb-4">
-        Join our "Keep it Green" program to volunteer for park cleanups and tree planting events.
-      </p>
-      <button className="w-full border-2 border-green-600 text-green-600 py-2 rounded-lg font-semibold hover:bg-green-50 transition-colors">
-        Learn More
-      </button>
-    </div>
+
+        {/* Green Initiative */}
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+              <Trees className="w-5 h-5 text-green-600" />
+            </div>
+            <h3 className="font-bold text-gray-900">Green Initiative</h3>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">
+            Join our "Keep it Green" program to volunteer for park cleanups and tree planting events.
+          </p>
+          <button className="w-full border-2 border-green-600 text-green-600 py-2 rounded-lg font-semibold hover:bg-green-50 transition-colors">
+            Learn More
+          </button>
+        </div>
+      </>
+    )}
   </>
 )}
           </aside>
