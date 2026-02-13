@@ -57,6 +57,8 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [comments]);
 
+
+
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
@@ -373,8 +375,10 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
       (report.status === 'resolved' && step.label === 'Resolved')
     );
 
+
+
   return (
-<div className="h-screen overflow-y-auto bg-gray-50">
+  <div className="h-screen overflow-y-auto bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -390,7 +394,7 @@ const ReportDetails = ({ reportId, onBack }: { reportId: string; onBack: () => v
             </div>
             <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold overflow-hidden">
-                              {userData?.profile_photo ? (
+                {userData?.profile_photo ? (
                                 <img 
                                   src={userData?.profile_photo} 
                                   alt="Profile" 

@@ -152,68 +152,68 @@ const availableAmenities = [
   'Public Restroom', 'WiFi Zone', 'Parking Lot', 'Playground', 'Sports Court'
 ];
 
-  useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session?.user) {
-        navigate("/login");
-        return;
+      useEffect(() => {
+        const checkAdmin = async () => {
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError || !session?.user) {
+            navigate("/login");
+            return;
+          }
+          const sessionUser = session.user;
+          const { data: userData, error: userError } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", sessionUser.id)
+            .single();
+          if (userError || !userData) {
+            console.error(userError);
+            navigate("/login");
+            return;
+          }
+          if (!userData.is_admin) {
+            navigate("/dashboard");
+            return;
+          }
+          setUser(userData);
+          await fetchReports();
+          await fetchStats();
+          await fetchAlerts();
+          await fetchAnnouncements(); 
+          await fetchParks();
+          await fetchUsers();
+          setLoading(false);
+        };
+        checkAdmin();
+      }, [navigate]);
+
+      useEffect(() => {
+        if (!loading && mapRef.current && !selectedReportId) {
+          const timer = setTimeout(() => {
+            initMap();
+          }, 100);
+          return () => clearTimeout(timer);
+        }
+      }, [loading, selectedReportId]);
+
+      useEffect(() => {
+        setCurrentPage(1);
+      }, [filterSearch, filterStatus, filterPriority, filterCategory]);
+
+      useEffect(() => {
+        setAlertCurrentPage(1);
+      }, [alertFilterSearch, alertFilterType, alertFilterStatus]);
+
+      useEffect(() => {
+      if (showLocationMap && announcementMapRef.current) {
+        setTimeout(() => initAnnouncementMap(), 100);
       }
-      const sessionUser = session.user;
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", sessionUser.id)
-        .single();
-      if (userError || !userData) {
-        console.error(userError);
-        navigate("/login");
-        return;
+    }, [showLocationMap]);
+
+    useEffect(() => {
+      if (showParkLocationMap && parkMapRef.current) {
+        setTimeout(() => initParkMap(), 100);
       }
-      if (!userData.is_admin) {
-        navigate("/dashboard");
-        return;
-      }
-      setUser(userData);
-      await fetchReports();
-      await fetchStats();
-      await fetchAlerts();
-      await fetchAnnouncements(); 
-      await fetchParks();
-      await fetchUsers();
-      setLoading(false);
-    };
-    checkAdmin();
-  }, [navigate]);
-
-  useEffect(() => {
-    if (!loading && mapRef.current && !selectedReportId) {
-      const timer = setTimeout(() => {
-        initMap();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [loading, selectedReportId]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filterSearch, filterStatus, filterPriority, filterCategory]);
-
-  useEffect(() => {
-    setAlertCurrentPage(1);
-  }, [alertFilterSearch, alertFilterType, alertFilterStatus]);
-
-  useEffect(() => {
-  if (showLocationMap && announcementMapRef.current) {
-    setTimeout(() => initAnnouncementMap(), 100);
-  }
-}, [showLocationMap]);
-
-useEffect(() => {
-  if (showParkLocationMap && parkMapRef.current) {
-    setTimeout(() => initParkMap(), 100);
-  }
-}, [showParkLocationMap]);
+    }, [showParkLocationMap]);
 
 
 const initParkMap = () => {
@@ -635,9 +635,6 @@ const handleEditAlert = (alert: any) => {
   setEditingAlertId(alert.id);
   setAlertsView("create");
 };
-
-
-
 
 const handleCreateAnnouncement = async () => {
   if (!announcementForm.title || !announcementForm.description) {

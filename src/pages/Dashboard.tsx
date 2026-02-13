@@ -16,7 +16,6 @@ import {
   Settings, Camera, Lock, Save 
 } from "lucide-react";
 
-
 interface Report {
   id: string;
   user_id: string;
@@ -77,7 +76,6 @@ interface LocationResult {
   lon: string;
 }
 
-
 const Dashboard = () => {
 
   // ========== STATE MANAGEMENT ==========
@@ -109,62 +107,62 @@ const Dashboard = () => {
   // Mood selection
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
-  // Comment-related state
-const [showComments, setShowComments] = useState<string | null>(null);
-const [comments, setComments] = useState<{ [postId: string]: Comment[] }>({});
-const [commentContent, setCommentContent] = useState("");
-const [postingComment, setPostingComment] = useState(false);
-const [replyingTo, setReplyingTo] = useState<string | null>(null); 
-const [replyContent, setReplyContent] = useState(""); 
-const [showReplies, setShowReplies] = useState<{ [commentId: string]: boolean }>({}); 
+    // Comment-related state
+  const [showComments, setShowComments] = useState<string | null>(null);
+  const [comments, setComments] = useState<{ [postId: string]: Comment[] }>({});
+  const [commentContent, setCommentContent] = useState("");
+  const [postingComment, setPostingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null); 
+  const [replyContent, setReplyContent] = useState(""); 
+  const [showReplies, setShowReplies] = useState<{ [commentId: string]: boolean }>({}); 
 
-// Share modal state
-const [showShareModal, setShowShareModal] = useState<string | null>(null); 
-const [copySuccess, setCopySuccess] = useState(false);
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState<string | null>(null); 
+  const [copySuccess, setCopySuccess] = useState(false);
 
-const [showFileReport, setShowFileReport] = useState(false);
-const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [showFileReport, setShowFileReport] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
-// My active reports
-const [userReports, setUserReports] = useState<any[]>([]);
-const [loadingReports, setLoadingReports] = useState(false);
-// Reports state
-const [reports, setReports] = useState<Report[]>([]);
-const [filteredReports, setFilteredReports] = useState<Report[]>([]);
-const [searchQuery, setSearchQuery] = useState("");
-const [statusFilter, setStatusFilter] = useState("all");
-const [sortBy, setSortBy] = useState("date");
-const [currentPage, setCurrentPage] = useState(1);
-const reportsPerPage = 5;
+  // My active reports
+  const [userReports, setUserReports] = useState<any[]>([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+  // Reports state
+  const [reports, setReports] = useState<Report[]>([]);
+  const [filteredReports, setFilteredReports] = useState<Report[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("date");
+  const [currentPage, setCurrentPage] = useState(1);
+  const reportsPerPage = 5;
 
-const [activeTab, setActiveTab] = useState<'feed' | 'reports' | 'alerts' | 'announcements' | 'parks' | 'settings'>('feed');
-const [alerts, setAlerts] = useState<any[]>([]);
-const [alertsLoading, setAlertsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'feed' | 'reports' | 'alerts' | 'announcements' | 'parks' | 'settings'>('feed');
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(true);
 
-const [announcements, setAnnouncements] = useState<any[]>([]);
-const [announcementsLoading, setAnnouncementsLoading] = useState(true);
-const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-const [currentMonth, setCurrentMonth] = useState(new Date());
-const [viewingAnnouncementId, setViewingAnnouncementId] = useState<string | null>(null);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [viewingAnnouncementId, setViewingAnnouncementId] = useState<string | null>(null);
 
-// Parks state
-const [parks, setParks] = useState<any[]>([]);
-const [parksLoading, setParksLoading] = useState(true);
-const [viewingParkId, setViewingParkId] = useState<string | null>(null);
+  // Parks state
+  const [parks, setParks] = useState<any[]>([]);
+  const [parksLoading, setParksLoading] = useState(true);
+  const [viewingParkId, setViewingParkId] = useState<string | null>(null);
 
-// Settings state
-const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-const [uploadingPhoto, setUploadingPhoto] = useState(false);
-const [fullName, setFullName] = useState("");
-const [username, setUsername] = useState("");
-const [email, setEmail] = useState("");
-const [phoneNumber, setPhoneNumber] = useState("");
-const [barangay, setBarangay] = useState("");
-const [currentPassword, setCurrentPassword] = useState("");
-const [newPassword, setNewPassword] = useState("");
-const [confirmPassword, setConfirmPassword] = useState("");
-const [savingProfile, setSavingProfile] = useState(false);
-const [updatingPassword, setUpdatingPassword] = useState(false);
+  // Settings state
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [barangay, setBarangay] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
 
 const getRelativeTime = (dateString: string) => {
   const now = new Date();
@@ -181,7 +179,7 @@ const getRelativeTime = (dateString: string) => {
   if (hours < 48) return "Yesterday";
   if (days < 7) return `${days} days ago`;
 
-  return null; // fallback to full date
+  return null; 
 };
 
 const INITIAL_COUNT = 3;
@@ -197,102 +195,104 @@ const dashboardAnnouncements = announcements
   )
   .slice(0, 2); // show only 2 on dashboard
 
-
-    // ========== LIFECYCLE HOOKS ==========
+  
+    // ========== USE EFFECT ==========
   // Run once when component mounts
- useEffect(() => {
-  checkUser();
-}, []);
+  useEffect(() => {
+    checkUser();
+  }, []);
 
-useEffect(() => {
-  if (user) {
-    fetchPosts();
-    fetchUserReports();
-    fetchReports();
-  }
-}, [user]);
+  useEffect(() => {
+    if (user) {
+      fetchPosts();
+      fetchUserReports();
+      fetchReports();
+    }
+  }, [user]);
 
-useEffect(() => {
-  filterAndSortReports();
-}, [reports, searchQuery, statusFilter, sortBy]);
+  useEffect(() => {
+    filterAndSortReports();
+  }, [reports, searchQuery, statusFilter, sortBy]);
 
-useEffect(() => {
-  setCurrentPage(1);
-}, [searchQuery, statusFilter, sortBy]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, sortBy]);
 
-useEffect(() => {
-  fetchAlerts();
-  
-  // Subscribe to real-time updates so alerts update automatically
-  const subscription = supabase
-    .channel('local_alerts_changes')
-    .on('postgres_changes', 
-      { event: '*', schema: 'public', table: 'local_alerts' },
-      () => {
-        fetchAlerts();
-      }
-    )
-    .subscribe();
+    useEffect(() => {
+      fetchAlerts();
+      
+      // Subscribe to real-time updates so alerts update automatically
+      const subscription = supabase
+        .channel('local_alerts_changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'local_alerts' },
+          () => {
+            fetchAlerts();
+          }
+        )
+        .subscribe();
 
-  return () => {
-    subscription.unsubscribe();
-  };
-}, []);
+      return () => {
+        subscription.unsubscribe();
+      };
+    }, []);
+
+    useEffect(() => {
+      fetchAnnouncements();
+      
+      // Subscribe to real-time updates
+      const subscription = supabase
+        .channel('announcements_changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'announcements' },
+          () => {
+            fetchAnnouncements();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }, []);
+
+  useEffect(() => {
+    setVisibleCount(3);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    fetchParks();
+    
+    // Subscribe to real-time updates
+    const subscription = supabase
+      .channel('parks_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'parks' },
+        () => {
+          fetchParks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
 
-useEffect(() => {
-  fetchAnnouncements();
-  
-  // Subscribe to real-time updates
-  const subscription = supabase
-    .channel('announcements_changes')
-    .on('postgres_changes', 
-      { event: '*', schema: 'public', table: 'announcements' },
-      () => {
-        fetchAnnouncements();
-      }
-    )
-    .subscribe();
-
-  return () => {
-    subscription.unsubscribe();
-  };
-}, []);
-
-useEffect(() => {
-  setVisibleCount(3);
-}, [selectedDate]);
-
-useEffect(() => {
-  fetchParks();
-  
-  // Subscribe to real-time updates
-  const subscription = supabase
-    .channel('parks_changes')
-    .on('postgres_changes', 
-      { event: '*', schema: 'public', table: 'parks' },
-      () => {
-        fetchParks();
-      }
-    )
-    .subscribe();
-
-  return () => {
-    subscription.unsubscribe();
-  };
-}, []);
+  useEffect(() => {
+    if (user && userData) {
+      setFullName(userData.full_name || "");
+      setUsername(userData.username || "");
+      setEmail(userData.email || user.email || "");
+      setPhoneNumber(userData.phone_number || "");
+      setBarangay(userData.barangay || "");
+      setProfilePhoto(userData.profile_photo || null);
+    }
+  }, [user, userData]);
 
 
-useEffect(() => {
-  if (user && userData) {
-    setFullName(userData.full_name || "");
-    setUsername(userData.username || "");
-    setEmail(userData.email || user.email || "");
-    setPhoneNumber(userData.phone_number || "");
-    setBarangay(userData.barangay || "");
-    setProfilePhoto(userData.profile_photo || null);
-  }
-}, [user, userData]);
+      // ========== CONST ==========
 
 const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0];
@@ -416,6 +416,7 @@ const handleUpdatePassword = async () => {
     setUpdatingPassword(false);
   }
 };
+
   // ========== USER AUTHENTICATION ==========
   // Check current authenticated user and fetch their profile data
   const checkUser = async () => {
@@ -1606,8 +1607,6 @@ const formatDateTime = (dateString: string) => {
     setShowMoodModal(false);
   };
 
-
-  
   // ========== LOADING STATE ==========
   // Show loading indicator while checking user authentication
   if (loading) {
@@ -1639,10 +1638,15 @@ if (showFileReport) {
   return <FileReport onBack={() => setShowFileReport(false)} />;
 }
 
+
+
+
+
+
   // ========== MAIN RENDER ==========
   return (
   <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
-<header className="bg-white border-b flex-shrink-0 z-50">
+    <header className="bg-white border-b flex-shrink-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
 
            {/* Logo and title */}
@@ -1704,11 +1708,11 @@ if (showFileReport) {
       </header>
 
 
-   {/* ========== MAIN CONTENT ========== */}
-      <div className="flex-1 overflow-hidden">
-  <div className="max-w-7xl mx-auto px-4 py-4 h-full overflow-hidden">
-<div className="grid grid-cols-12 gap-6 h-full overflow-hidden">
-            
+              {/* ========== MAIN CONTENT ========== */}
+        <div className="flex-1 overflow-hidden">
+              <div className="max-w-7xl mx-auto px-4 py-4 h-full overflow-hidden">
+            <div className="grid grid-cols-12 gap-6 h-full overflow-hidden">
+                        
             {/* ========== LEFT SIDEBAR ========== */}
             <aside className="col-span-3">
               <div className="bg-white rounded-lg shadow-sm p-4 space-y-2">
@@ -2658,6 +2662,8 @@ if (showFileReport) {
       </div>
   )}
 
+
+
   {activeTab === 'reports' && (
     <div className="h-full overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
 
@@ -2838,6 +2844,8 @@ if (showFileReport) {
   </>
     </div>
 )}
+
+
 
 {/* ========== ALERTS TAB ========== */}
 {activeTab === 'alerts' && (
@@ -3346,101 +3354,101 @@ if (showFileReport) {
         )}
 
       {/* Park Cards */}
-{!parksLoading && parks.length > 0 && (
-  <div className="space-y-6">
-    {parks.map((park) => (
-      <div 
-        key={park.id} 
-        onClick={() => setViewingParkId(park.id)}
-        className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
-      >
-        {/* Park Image - Top */}
-        <div className="relative h-64 bg-gradient-to-br from-green-400 to-green-600">
-          {park.images && park.images.length > 0 ? (
-            <img 
-              src={park.images[0]} 
-              alt={park.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Trees className="w-20 h-20 text-white opacity-50" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-            <span className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-              View Details
-            </span>
-          </div>
-        </div>
-
-        {/* Park Info - Bottom */}
-        <div className="p-6">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1">
-              <h3 className="text-2xl font-bold text-gray-900 group-hover:text-green-600 transition-colors mb-3">
-                {park.name}
-              </h3>
-              
-              <div className="flex items-center gap-3">
-                <div className="flex items-start gap-2 text-gray-600 flex-1">
-                  <span className="text-sm">{park.physical_address}</span>
-                </div>
-                
-                {/* Get Directions Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const address = encodeURIComponent(park.physical_address);
-                  window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
-                }}
-                className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors flex-shrink-0 shadow-md"
-                title="Get Directions"
+        {!parksLoading && parks.length > 0 && (
+          <div className="space-y-6">
+            {parks.map((park) => (
+              <div 
+                key={park.id} 
+                onClick={() => setViewingParkId(park.id)}
+                className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
               >
-                <MapPin className="w-5 h-5" />
-              </button>
-              </div>
-            </div>
+                {/* Park Image - Top */}
+                <div className="relative h-64 bg-gradient-to-br from-green-400 to-green-600">
+                  {park.images && park.images.length > 0 ? (
+                    <img 
+                      src={park.images[0]} 
+                      alt={park.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Trees className="w-20 h-20 text-white opacity-50" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <span className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                      View Details
+                    </span>
+                  </div>
+                </div>
+
+                  {/* Park Info - Bottom */}
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-2xl font-bold text-gray-900 group-hover:text-green-600 transition-colors mb-3">
+                          {park.name}
+                        </h3>
+                        
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-start gap-2 text-gray-600 flex-1">
+                            <span className="text-sm">{park.physical_address}</span>
+                          </div>
+                          
+                          {/* Get Directions Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const address = encodeURIComponent(park.physical_address);
+                            window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+                          }}
+                          className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors flex-shrink-0 shadow-md"
+                          title="Get Directions"
+                        >
+                          <MapPin className="w-5 h-5" />
+                        </button>
+                        </div>
+                      </div>
                       </div>
 
-          {park.description && (
-            <p className="text-gray-700 mb-4 line-clamp-2 leading-relaxed">
-              {park.description}
-            </p>
-          )}
+                    {park.description && (
+                      <p className="text-gray-700 mb-4 line-clamp-2 leading-relaxed">
+                        {park.description}
+                      </p>
+                    )}
 
-          {/* Amenities */}
-          {park.amenities && park.amenities.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Amenities</p>
-              <div className="flex flex-wrap gap-2">
-                {park.amenities.slice(0, 6).map((amenity: string, index: number) => (
-                  <span key={index} className="px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
-                    {amenity}
-                  </span>
-                ))}
-                {park.amenities.length > 6 && (
-                  <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
-                    +{park.amenities.length - 6} more
-                  </span>
-                )}
+                  {/* Amenities */}
+                  {park.amenities && park.amenities.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Amenities</p>
+                      <div className="flex flex-wrap gap-2">
+                        {park.amenities.slice(0, 6).map((amenity: string, index: number) => (
+                          <span key={index} className="px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
+                            {amenity}
+                          </span>
+                        ))}
+                        {park.amenities.length > 6 && (
+                          <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                            +{park.amenities.length - 6} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
-    ))}
-  </div>
-)}
+            ))}
+          </div>
+        )}
       </>
     )}
   </div>
-    </div>
-
+</div>
 )}
+
 
 {/* ========== SETTINGS TAB ========== */}
 {activeTab === 'settings' && (
@@ -3667,10 +3675,7 @@ if (showFileReport) {
     </div>
   </div>
     </div>
-
 )}
-
-
 </main>
 
           {/* ========== RIGHT SIDEBAR ========== */}
@@ -3803,702 +3808,705 @@ if (showFileReport) {
               </>
             )}
 
- {/* REPORTS TAB SIDEBAR */}
-  {activeTab === 'reports' && (
-    <>
-      <div className="bg-blue-50 rounded-lg shadow-sm p-4">
-        <div className="flex items-start gap-3 mb-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-            <Bell className="w-4 h-4 text-white" />
-          </div>
-          <h3 className="font-bold text-gray-900">Reporting Guidelines</h3>
-        </div>
-        <p className="text-sm text-gray-700 mb-4">
-          Ensure your reports include a precise location and clear photos. This helps our city maintenance teams resolve issues up to 30% faster.
-        </p>
-        <div className="bg-white rounded-lg p-3">
-          <p className="text-xs font-semibold text-blue-600 mb-1">RESPONSE TIME</p>
-          <p className="text-sm font-bold text-gray-900">Typical review: 24-48 hours</p>
-        </div>
-      </div>
+            {/* REPORTS TAB SIDEBAR */}
+              {activeTab === 'reports' && (
+                <>
+                  <div className="bg-blue-50 rounded-lg shadow-sm p-4">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Bell className="w-4 h-4 text-white" />
+                      </div>
+                      <h3 className="font-bold text-gray-900">Reporting Guidelines</h3>
+                    </div>
+                    <p className="text-sm text-gray-700 mb-4">
+                      Ensure your reports include a precise location and clear photos. This helps our city maintenance teams resolve issues up to 30% faster.
+                    </p>
+                    <div className="bg-white rounded-lg p-3">
+                      <p className="text-xs font-semibold text-blue-600 mb-1">RESPONSE TIME</p>
+                      <p className="text-sm font-bold text-gray-900">Typical review: 24-48 hours</p>
+                    </div>
+                  </div>
 
-      <div className="bg-gray-100 rounded-lg shadow-sm p-4">
-        <h3 className="font-bold text-gray-900 mb-2">Need urgent help?</h3>
-        <p className="text-sm text-gray-600 mb-3">
-          For emergencies, please contact the 24/7 city hotline directly.
-        </p>
-        <button className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-700">
-          Call City Hotline
-        </button>
-      </div>
-    </>
-  )}
-{/* ALERTS TAB SIDEBAR */}
-  {activeTab === 'alerts' && (
-    <>
-      {/* Quick Hotlines */}
-      <div className="bg-white rounded-lg shadow-sm p-2.5 mb-2.5">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-semibold text-gray-700">
-            Quick Hotlines
-          </h3>
-          <span className="text-[9px] font-semibold text-red-600">
-            24/7 Active
-          </span>
-        </div>
+                  <div className="bg-gray-100 rounded-lg shadow-sm p-4">
+                    <h3 className="font-bold text-gray-900 mb-2">Need urgent help?</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      For emergencies, please contact the 24/7 city hotline directly.
+                    </p>
+                    <button className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-700">
+                      Call City Hotline
+                    </button>
+                  </div>
+                </>
+              )}
 
-        <div className="space-y-2">
-          {/* Fire */}
-          <div className="flex items-center justify-between p-2 rounded-lg border">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-red-500 flex items-center justify-center">
-                <Flame className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500">Fire Department</p>
-                <p className="text-xs font-semibold">911</p>
-              </div>
-            </div>
-            <a href="tel:911" className="text-gray-300 hover:text-red-600">
-              <Phone className="w-3.5 h-3.5" />
-            </a>
-          </div>
+          {/* ALERTS TAB SIDEBAR */}
+            {activeTab === 'alerts' && (
+              <>
+                {/* Quick Hotlines */}
+                <div className="bg-white rounded-lg shadow-sm p-2.5 mb-2.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-semibold text-gray-700">
+                      Quick Hotlines
+                    </h3>
+                    <span className="text-[9px] font-semibold text-red-600">
+                      24/7 Active
+                    </span>
+                  </div>
 
-          {/* Police */}
-          <div className="flex items-center justify-between p-2 rounded-lg border">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                <ShieldCheck className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500">Police Station</p>
-                <p className="text-xs font-semibold">117</p>
-              </div>
-            </div>
-            <a href="tel:117" className="text-gray-300 hover:text-blue-600">
-              <Phone className="w-3.5 h-3.5" />
-            </a>
-          </div>
+                  <div className="space-y-2">
+                    {/* Fire */}
+                    <div className="flex items-center justify-between p-2 rounded-lg border">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-red-500 flex items-center justify-center">
+                          <Flame className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500">Fire Department</p>
+                          <p className="text-xs font-semibold">911</p>
+                        </div>
+                      </div>
+                      <a href="tel:911" className="text-gray-300 hover:text-red-600">
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
 
-          {/* Medical */}
-          <div className="flex items-center justify-between p-2 rounded-lg border">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center">
-                <Ambulance className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500">Medical Emergency</p>
-                <p className="text-xs font-semibold">166</p>
-              </div>
-            </div>
-            <a href="tel:166" className="text-gray-300 hover:text-sky-600">
-              <Phone className="w-3.5 h-3.5" />
-            </a>
-          </div>
+                    {/* Police */}
+                    <div className="flex items-center justify-between p-2 rounded-lg border">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                          <ShieldCheck className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500">Police Station</p>
+                          <p className="text-xs font-semibold">117</p>
+                        </div>
+                      </div>
+                      <a href="tel:117" className="text-gray-300 hover:text-blue-600">
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
 
-          {/* Barangay */}
-          <div className="flex items-center justify-between p-2 rounded-lg border">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500">Barangay Hall</p>
-                <p className="text-xs font-semibold">555-1234</p>
-              </div>
-            </div>
-            <a href="tel:5551234" className="text-gray-300 hover:text-green-600">
-              <Phone className="w-3.5 h-3.5" />
-            </a>
-          </div>
-        </div>
-      </div>
+                    {/* Medical */}
+                    <div className="flex items-center justify-between p-2 rounded-lg border">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center">
+                          <Ambulance className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500">Medical Emergency</p>
+                          <p className="text-xs font-semibold">166</p>
+                        </div>
+                      </div>
+                      <a href="tel:166" className="text-gray-300 hover:text-sky-600">
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
 
-      {/* Safety Tips */}
-      <div className="bg-white rounded-lg shadow-sm p-2.5 mb-2.5">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-semibold text-gray-700">
-            Safety Tips & Preparedness
-          </h3>
-          <span className="text-[9px] font-semibold text-blue-600">
-            Community
-          </span>
-        </div>
+                    {/* Barangay */}
+                    <div className="flex items-center justify-between p-2 rounded-lg border">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center">
+                          <Building2 className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500">Barangay Hall</p>
+                          <p className="text-xs font-semibold">555-1234</p>
+                        </div>
+                      </div>
+                      <a href="tel:5551234" className="text-gray-300 hover:text-green-600">
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
 
-        <div className="space-y-2">
-          <div className="flex gap-2 p-2 rounded-lg bg-gray-50">
-            <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <Backpack className="w-3.5 h-3.5 text-blue-600" />
-            </div>
+                {/* Safety Tips */}
+                <div className="bg-white rounded-lg shadow-sm p-2.5 mb-2.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-semibold text-gray-700">
+                      Safety Tips & Preparedness
+                    </h3>
+                    <span className="text-[9px] font-semibold text-blue-600">
+                      Community
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex gap-2 p-2 rounded-lg bg-gray-50">
+                      <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <Backpack className="w-3.5 h-3.5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold">
+                          Prepare a 72-hour emergency kit
+                        </p>
+                        <p className="text-[10px] text-gray-600">
+                          Include water, non-perishable food, flashlights, and first-aid.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 p-2 rounded-lg bg-gray-50">
+                      <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                        <UserRound className="w-3.5 h-3.5 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold">
+                          Check on elderly neighbors
+                        </p>
+                        <p className="text-[10px] text-gray-600">
+                          Ensure access to heat, water, and medicine.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 p-2 rounded-lg bg-gray-50">
+                      <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                        <Users className="w-3.5 h-3.5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold">
+                          Establish a contact plan
+                        </p>
+                        <p className="text-[10px] text-gray-600">
+                          Designate an out-of-town contact.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Public Safety Notice */}
+              {/* Public Safety Notice */}
+          <div className="bg-white rounded-lg shadow-sm border-l-4 border-red-500 flex gap-2 p-2">
+            <AlertTriangle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-semibold">
-                Prepare a 72-hour emergency kit
+              <p className="text-[10px] font-semibold text-red-600">
+                Public Safety Notice
               </p>
-              <p className="text-[10px] text-gray-600">
-                Include water, non-perishable food, flashlights, and first-aid.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-2 p-2 rounded-lg bg-gray-50">
-            <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
-              <UserRound className="w-3.5 h-3.5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold">
-                Check on elderly neighbors
-              </p>
-              <p className="text-[10px] text-gray-600">
-                Ensure access to heat, water, and medicine.
+              <p className="text-[9px] text-gray-600 leading-tight">
+                Verified information is updated every 15 minutes. For immediate
+                life-threatening emergencies, dial 911 directly.
               </p>
             </div>
           </div>
-
-          <div className="flex gap-2 p-2 rounded-lg bg-gray-50">
-            <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-              <Users className="w-3.5 h-3.5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold">
-                Establish a contact plan
-              </p>
-              <p className="text-[10px] text-gray-600">
-                Designate an out-of-town contact.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Public Safety Notice */}
-    {/* Public Safety Notice */}
-<div className="bg-white rounded-lg shadow-sm border-l-4 border-red-500 flex gap-2 p-2">
-  <AlertTriangle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
-  <div>
-    <p className="text-[10px] font-semibold text-red-600">
-      Public Safety Notice
-    </p>
-    <p className="text-[9px] text-gray-600 leading-tight">
-      Verified information is updated every 15 minutes. For immediate
-      life-threatening emergencies, dial 911 directly.
-    </p>
-  </div>
-</div>
-    </>
-  )}
-
-{activeTab === "announcements" && (
-  <>
-    {/* ===== COMMUNITY CALENDAR ===== */}
-    <div className="bg-white rounded-lg shadow-sm border p-2.5 mb-2.5">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <h3 className="font-semibold text-xs text-gray-900">
-            {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-          </h3>
-          <p className="text-[9px] text-gray-500">
-            Community Calendar
-          </p>
-        </div>
-        <div className="flex gap-1 text-gray-400 text-lg">
-          <button 
-            onClick={goToPreviousMonth}
-            className="hover:text-gray-600 w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100"
-          >
-            ‹
-          </button>
-          <button 
-            onClick={goToNextMonth}
-            className="hover:text-gray-600 w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100"
-          >
-            ›
-          </button>
-        </div>
-      </div>
-
-      {/* Weekdays */}
-      <div className="grid grid-cols-7 text-[9px] text-center text-gray-500 mb-1.5 font-semibold">
-        {["SU", "MO", "TU", "WE", "TH", "FR", "SA"].map(day => (
-          <div key={day}>
-            {day}
-          </div>
-        ))}
-      </div>
-
-      {/* Dates */}
-      <div className="grid grid-cols-7 gap-1 text-[11px] text-center">
-        {(() => {
-          const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
-          const days = [];
-          
-          // Empty cells for days before month starts
-          for (let i = 0; i < startingDayOfWeek; i++) {
-            days.push(<div key={`empty-${i}`} className="py-1.5"></div>);
-          }
-          
-          // Actual days of the month
-          for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-            const isToday = date.toDateString() === new Date().toDateString();
-            const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
-            const hasEvents = getAnnouncementsForDate(date).length > 0;
-            
-            days.push(
-              <button
-                key={day}
-                onClick={() => setSelectedDate(date)}
-                className={`py-1.5 rounded font-medium cursor-pointer transition-colors relative ${
-                  isToday
-                    ? "bg-blue-600 text-white"
-                    : isSelected 
-                    ? "bg-blue-100 text-blue-600 ring-1 ring-blue-600"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                {day}
-                {hasEvents && !isToday && !isSelected && (
-                  <div className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-600 rounded-full"></div>
-                )}
-              </button>
-            );
-          }
-          
-          return days;
-        })()}
-      </div>
-    </div>
-{/* ===== UPCOMING EVENTS ===== */}
-<div className="bg-white rounded-lg shadow-sm border p-2.5">
-  {/* Header */}
-  <div className="mb-2">
-    <h3 className="font-semibold text-gray-900 text-xs">
-      {selectedDate 
-        ? selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-        : 'Upcoming Events'
-      }
-    </h3>
-    {selectedDate && (
-      <button 
-        onClick={() => setSelectedDate(null)}
-        className="text-[9px] text-blue-600 font-semibold hover:underline mt-0.5 inline-flex items-center gap-0.5"
-      >
-        ← Back to all events
-      </button>
-    )}
-  </div>
-
-  {/* Events List */}
-  <div className="space-y-1.5">
-    {(() => {
-      const eventsToShow = selectedDate 
-      ? getAnnouncementsForDate(selectedDate)
-      : announcements
-          .filter(ann => ann.status === 'published')
-          .sort((a, b) => {
-            const dateA = new Date(a.scheduled_date || a.created_at).getTime();
-            const dateB = new Date(b.scheduled_date || b.created_at).getTime();
-            return dateA - dateB;
-          })
-          .slice(0, visibleCount);
-
-      
-      if (eventsToShow.length === 0) {
-        return (
-          <div className="text-center py-3">
-            <Calendar className="w-7 h-7 text-gray-300 mx-auto mb-1.5" />
-            <p className="text-[10px] text-gray-500 font-medium">
-              {selectedDate 
-                ? 'No events on this date'
-                : 'No upcoming events'
-              }
-            </p>
-          </div>
-        );
-      }
-
-      return eventsToShow.map(announcement => {
-        const eventDate = new Date(announcement.scheduled_date || announcement.created_at);
-        const month = eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-        const day = eventDate.getDate();
-        const time = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        
-        return (
-          <div 
-            key={announcement.id} 
-            className="border rounded-md p-2 hover:border-blue-300 hover:bg-blue-50/50 transition-all cursor-pointer"
-            onClick={() => setViewingAnnouncementId(announcement.id)}
-          >
-            <div className="flex gap-2">
-              {/* Date Badge */}
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-600 text-white rounded flex flex-col items-center justify-center">
-                  <div className="text-[7px] font-semibold leading-none">{month}</div>
-                  <div className="text-sm font-bold leading-none mt-0.5">{day}</div>
-                </div>
-              </div>
-
-              {/* Event Details */}
-              <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-gray-900 text-[11px] leading-tight line-clamp-2 mb-0.5">
-                  {announcement.title}
-                </h4>
-
-                {/* Category Badge */}
-                <div className="mb-1">
-                  {getCategoryBadge(announcement.category)}
-                </div>
-
-                {/* Time */}
-                <div className="flex items-center gap-1 text-[9px] text-gray-600 mb-0.5">
-                  <Clock className="w-2.5 h-2.5 flex-shrink-0" />
-                  <span className="truncate">{time}</span>
-                </div>
-                
-                {/* Location */}
-                {announcement.location && (
-                  <div className="flex items-center gap-1 text-[9px] text-gray-600">
-                    <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
-                    <span className="truncate">{announcement.location}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      });
-    })()}
-  </div>
-
- {/* LOAD MORE BUTTON */}
-    {!selectedDate && (() => {
-      const total = announcements.filter(ann => ann.status === 'published').length;
-
-      // SHOW LESS
-      if (visibleCount > INITIAL_COUNT) {
-        return (
-          <button
-            onClick={() => setVisibleCount(INITIAL_COUNT)}
-            className="w-full text-[10px] text-gray-600 font-semibold py-1.5 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1 mt-2 border-t pt-2"
-          >
-            Show less
-            <ChevronUp className="w-3 h-3" />
-          </button>
-        );
-      }
-
-      // LOAD MORE
-      if (total > visibleCount) {
-        return (
-          <button
-            onClick={() => setVisibleCount(prev => prev + LOAD_STEP)}
-            className="w-full text-[10px] text-blue-600 font-semibold py-1.5 hover:bg-blue-50 rounded-lg flex items-center justify-center gap-1 mt-2 border-t pt-2"
-          >
-            Load more
-            <ChevronDown className="w-3 h-3" />
-          </button>
-        );
-      }
-
-      return null;
-    })()}
-
-  </div>
-    </>
-  )}
-
-{activeTab === 'parks' && (
-  <>
-    {viewingParkId ? (() => {
-      const park = parks.find(p => p.id === viewingParkId);
-      if (!park) return null;
-
-      return (
-        <>
-
-           {/* Park Rules */}
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <h3 className="font-bold text-gray-900 mb-4">Attractions Rules</h3>
-            <div className="space-y-3">
-             <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle className="w-3 h-3 text-green-600" />
-                  </div>
-                  <p className="text-sm text-gray-700">Respect posted operating hours and facility guidelines.</p>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle className="w-3 h-3 text-green-600" />
-                  </div>
-                  <p className="text-sm text-gray-700">Maintain cleanliness and respect shared public spaces.</p>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle className="w-3 h-3 text-green-600" />
-                  </div>
-                  <p className="text-sm text-gray-700">Be respectful of cultural, religious, and historical sites.</p>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <X className="w-3 h-3 text-red-600" />
-                  </div>
-                  <p className="text-sm text-gray-700">Do not vandalize, deface, or damage public property.</p>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <X className="w-3 h-3 text-red-600" />
-                  </div>
-                  <p className="text-sm text-gray-700">Avoid excessive noise that may disturb others.</p>
-                </div>
-
-            </div>
-          </div>
-          
-          {/* Operating Hours */}
-          <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-600" />
-              Operating Hours
-            </h3>
-            {park.operating_hours ? (
-              <div className="space-y-2">
-                <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                  {park.operating_hours}
-                </p>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500 italic">Hours not specified</p>
+              </>
             )}
-          </div>
-        </>
-      );
-    })() : (
-      <>
-        {/* Park Rules - List View */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <h3 className="font-bold text-gray-900 mb-4">Attractions Rules</h3>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <CheckCircle className="w-3 h-3 text-green-600" />
+
+            {activeTab === "announcements" && (
+              <>
+                {/* ===== COMMUNITY CALENDAR ===== */}
+                <div className="bg-white rounded-lg shadow-sm border p-2.5 mb-2.5">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-xs text-gray-900">
+                        {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      </h3>
+                      <p className="text-[9px] text-gray-500">
+                        Community Calendar
+                      </p>
+                    </div>
+                    <div className="flex gap-1 text-gray-400 text-lg">
+                      <button 
+                        onClick={goToPreviousMonth}
+                        className="hover:text-gray-600 w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100"
+                      >
+                        ‹
+                      </button>
+                      <button 
+                        onClick={goToNextMonth}
+                        className="hover:text-gray-600 w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Weekdays */}
+                  <div className="grid grid-cols-7 text-[9px] text-center text-gray-500 mb-1.5 font-semibold">
+                    {["SU", "MO", "TU", "WE", "TH", "FR", "SA"].map(day => (
+                      <div key={day}>
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Dates */}
+                  <div className="grid grid-cols-7 gap-1 text-[11px] text-center">
+                    {(() => {
+                      const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
+                      const days = [];
+                      
+                      // Empty cells for days before month starts
+                      for (let i = 0; i < startingDayOfWeek; i++) {
+                        days.push(<div key={`empty-${i}`} className="py-1.5"></div>);
+                      }
+                      
+                      // Actual days of the month
+                      for (let day = 1; day <= daysInMonth; day++) {
+                        const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                        const isToday = date.toDateString() === new Date().toDateString();
+                        const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+                        const hasEvents = getAnnouncementsForDate(date).length > 0;
+                        
+                        days.push(
+                          <button
+                            key={day}
+                            onClick={() => setSelectedDate(date)}
+                            className={`py-1.5 rounded font-medium cursor-pointer transition-colors relative ${
+                              isToday
+                                ? "bg-blue-600 text-white"
+                                : isSelected 
+                                ? "bg-blue-100 text-blue-600 ring-1 ring-blue-600"
+                                : "text-gray-700 hover:bg-gray-100"
+                            }`}
+                          >
+                            {day}
+                            {hasEvents && !isToday && !isSelected && (
+                              <div className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-600 rounded-full"></div>
+                            )}
+                          </button>
+                        );
+                      }
+                      
+                      return days;
+                    })()}
+                  </div>
+                </div>
+
+            {/* ===== UPCOMING EVENTS ===== */}
+            <div className="bg-white rounded-lg shadow-sm border p-2.5">
+              {/* Header */}
+              <div className="mb-2">
+                <h3 className="font-semibold text-gray-900 text-xs">
+                  {selectedDate 
+                    ? selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+                    : 'Upcoming Events'
+                  }
+                </h3>
+                {selectedDate && (
+                  <button 
+                    onClick={() => setSelectedDate(null)}
+                    className="text-[9px] text-blue-600 font-semibold hover:underline mt-0.5 inline-flex items-center gap-0.5"
+                  >
+                    ← Back to all events
+                  </button>
+                )}
               </div>
-              <p className="text-sm text-gray-700">Keep dogs on leashes unless in designated zones.</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <CheckCircle className="w-3 h-3 text-green-600" />
+
+              {/* Events List */}
+              <div className="space-y-1.5">
+                {(() => {
+                  const eventsToShow = selectedDate 
+                  ? getAnnouncementsForDate(selectedDate)
+                  : announcements
+                      .filter(ann => ann.status === 'published')
+                      .sort((a, b) => {
+                        const dateA = new Date(a.scheduled_date || a.created_at).getTime();
+                        const dateB = new Date(b.scheduled_date || b.created_at).getTime();
+                        return dateA - dateB;
+                      })
+                      .slice(0, visibleCount);
+
+                  
+                  if (eventsToShow.length === 0) {
+                    return (
+                      <div className="text-center py-3">
+                        <Calendar className="w-7 h-7 text-gray-300 mx-auto mb-1.5" />
+                        <p className="text-[10px] text-gray-500 font-medium">
+                          {selectedDate 
+                            ? 'No events on this date'
+                            : 'No upcoming events'
+                          }
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return eventsToShow.map(announcement => {
+                    const eventDate = new Date(announcement.scheduled_date || announcement.created_at);
+                    const month = eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+                    const day = eventDate.getDate();
+                    const time = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                    
+                    return (
+                      <div 
+                        key={announcement.id} 
+                        className="border rounded-md p-2 hover:border-blue-300 hover:bg-blue-50/50 transition-all cursor-pointer"
+                        onClick={() => setViewingAnnouncementId(announcement.id)}
+                      >
+                        <div className="flex gap-2">
+                          {/* Date Badge */}
+                          <div className="flex-shrink-0">
+                            <div className="w-8 h-8 bg-blue-600 text-white rounded flex flex-col items-center justify-center">
+                              <div className="text-[7px] font-semibold leading-none">{month}</div>
+                              <div className="text-sm font-bold leading-none mt-0.5">{day}</div>
+                            </div>
+                          </div>
+
+                          {/* Event Details */}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-gray-900 text-[11px] leading-tight line-clamp-2 mb-0.5">
+                              {announcement.title}
+                            </h4>
+
+                            {/* Category Badge */}
+                            <div className="mb-1">
+                              {getCategoryBadge(announcement.category)}
+                            </div>
+
+                            {/* Time */}
+                            <div className="flex items-center gap-1 text-[9px] text-gray-600 mb-0.5">
+                              <Clock className="w-2.5 h-2.5 flex-shrink-0" />
+                              <span className="truncate">{time}</span>
+                            </div>
+                            
+                            {/* Location */}
+                            {announcement.location && (
+                              <div className="flex items-center gap-1 text-[9px] text-gray-600">
+                                <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+                                <span className="truncate">{announcement.location}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
-              <p className="text-sm text-gray-700">Dispose of trash in provided bins.</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <X className="w-3 h-3 text-red-600" />
+
+            {/* LOAD MORE BUTTON */}
+                {!selectedDate && (() => {
+                  const total = announcements.filter(ann => ann.status === 'published').length;
+
+                  // SHOW LESS
+                  if (visibleCount > INITIAL_COUNT) {
+                    return (
+                      <button
+                        onClick={() => setVisibleCount(INITIAL_COUNT)}
+                        className="w-full text-[10px] text-gray-600 font-semibold py-1.5 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1 mt-2 border-t pt-2"
+                      >
+                        Show less
+                        <ChevronUp className="w-3 h-3" />
+                      </button>
+                    );
+                  }
+
+                  // LOAD MORE
+                  if (total > visibleCount) {
+                    return (
+                      <button
+                        onClick={() => setVisibleCount(prev => prev + LOAD_STEP)}
+                        className="w-full text-[10px] text-blue-600 font-semibold py-1.5 hover:bg-blue-50 rounded-lg flex items-center justify-center gap-1 mt-2 border-t pt-2"
+                      >
+                        Load more
+                        <ChevronDown className="w-3 h-3" />
+                      </button>
+                    );
+                  }
+
+                  return null;
+                })()}
+
               </div>
-              <p className="text-sm text-gray-700">No alcohol or smoking allowed in public parks.</p>
+                </>
+              )}
+
+
+              {activeTab === 'parks' && (
+                <>
+                  {viewingParkId ? (() => {
+                    const park = parks.find(p => p.id === viewingParkId);
+                    if (!park) return null;
+
+                    return (
+                      <>
+
+                        {/* Park Rules */}
+                        <div className="bg-white rounded-lg shadow-sm p-4">
+                          <h3 className="font-bold text-gray-900 mb-4">Attractions Rules</h3>
+                          <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                                <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <CheckCircle className="w-3 h-3 text-green-600" />
+                                </div>
+                                <p className="text-sm text-gray-700">Respect posted operating hours and facility guidelines.</p>
+                              </div>
+
+                              <div className="flex items-start gap-3">
+                                <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <CheckCircle className="w-3 h-3 text-green-600" />
+                                </div>
+                                <p className="text-sm text-gray-700">Maintain cleanliness and respect shared public spaces.</p>
+                              </div>
+
+                              <div className="flex items-start gap-3">
+                                <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <CheckCircle className="w-3 h-3 text-green-600" />
+                                </div>
+                                <p className="text-sm text-gray-700">Be respectful of cultural, religious, and historical sites.</p>
+                              </div>
+
+                              <div className="flex items-start gap-3">
+                                <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <X className="w-3 h-3 text-red-600" />
+                                </div>
+                                <p className="text-sm text-gray-700">Do not vandalize, deface, or damage public property.</p>
+                              </div>
+
+                              <div className="flex items-start gap-3">
+                                <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <X className="w-3 h-3 text-red-600" />
+                                </div>
+                                <p className="text-sm text-gray-700">Avoid excessive noise that may disturb others.</p>
+                              </div>
+
+                          </div>
+                        </div>
+                        
+                        {/* Operating Hours */}
+                        <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                          <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-blue-600" />
+                            Operating Hours
+                          </h3>
+                          {park.operating_hours ? (
+                            <div className="space-y-2">
+                              <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                                {park.operating_hours}
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500 italic">Hours not specified</p>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })() : (
+                    <>
+                {/* Park Rules - List View */}
+                <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                  <h3 className="font-bold text-gray-900 mb-4">Attractions Rules</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <CheckCircle className="w-3 h-3 text-green-600" />
+                      </div>
+                      <p className="text-sm text-gray-700">Keep dogs on leashes unless in designated zones.</p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <CheckCircle className="w-3 h-3 text-green-600" />
+                      </div>
+                      <p className="text-sm text-gray-700">Dispose of trash in provided bins.</p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <X className="w-3 h-3 text-red-600" />
+                      </div>
+                      <p className="text-sm text-gray-700">No alcohol or smoking allowed in public parks.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Green Initiative */}
+                <div className="bg-white rounded-lg shadow-sm p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                      <Trees className="w-5 h-5 text-green-600" />
+                    </div>
+                    <h3 className="font-bold text-gray-900">Green Initiative</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Join our "Keep it Green" program to volunteer for park cleanups and tree planting events.
+                  </p>
+                  <button className="w-full border-2 border-green-600 text-green-600 py-2 rounded-lg font-semibold hover:bg-green-50 transition-colors">
+                    Learn More
+                  </button>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* SETTINGS TAB SIDEBAR */}
+        {activeTab === 'settings' && (
+          <>
+            {/* Account Security Tips 
+            <div className="bg-blue-50 rounded-lg shadow-sm p-4 mb-4">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Lock className="w-4 h-4 text-white" />
+                </div>
+                <h3 className="font-bold text-gray-900">Security Tips</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-gray-700">Use a strong password with at least 8 characters</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-gray-700">Include numbers, symbols, and mixed case letters</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-gray-700">Never share your password with anyone</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-gray-700">Change your password every 3-6 months</p>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+        */}
+            {/* Profile Completeness */}
+            <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+              <h3 className="font-bold text-gray-900 mb-3">Profile Completeness</h3>
+              
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-gray-600">Profile Photo</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {profilePhoto ? '✓' : '○'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all ${profilePhoto ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
+                    ></div>
+                  </div>
+                </div>
 
-        {/* Green Initiative */}
-        <div className="bg-white rounded-lg shadow-sm p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-              <Trees className="w-5 h-5 text-green-600" />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-gray-600">Full Name</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {fullName ? '✓' : '○'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all ${fullName ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
+                    ></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-gray-600">Phone Number</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {phoneNumber ? '✓' : '○'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all ${phoneNumber ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
+                    ></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-gray-600">Barangay</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {barangay ? '✓' : '○'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all ${barangay ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-700">Overall</span>
+                  <span className="text-sm font-bold text-blue-600">
+                    {(() => {
+                      const fields = [profilePhoto, fullName, phoneNumber, barangay];
+                      const completed = fields.filter(f => f).length;
+                      return Math.round((completed / fields.length) * 100);
+                    })()}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 mt-2">
+                  <div 
+                    className="h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
+                    style={{ 
+                      width: `${(() => {
+                        const fields = [profilePhoto, fullName, phoneNumber, barangay];
+                        const completed = fields.filter(f => f).length;
+                        return (completed / fields.length) * 100;
+                      })()}%` 
+                    }}
+                  ></div>
+                </div>
+              </div>
             </div>
-            <h3 className="font-bold text-gray-900">Green Initiative</h3>
-          </div>
-          <p className="text-sm text-gray-600 mb-4">
-            Join our "Keep it Green" program to volunteer for park cleanups and tree planting events.
-          </p>
-          <button className="w-full border-2 border-green-600 text-green-600 py-2 rounded-lg font-semibold hover:bg-green-50 transition-colors">
-            Learn More
-          </button>
-        </div>
-      </>
-    )}
-  </>
-)}
 
-{/* SETTINGS TAB SIDEBAR */}
-{activeTab === 'settings' && (
-  <>
-    {/* Account Security Tips 
-    <div className="bg-blue-50 rounded-lg shadow-sm p-4 mb-4">
-      <div className="flex items-start gap-3 mb-3">
-        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-          <Lock className="w-4 h-4 text-white" />
-        </div>
-        <h3 className="font-bold text-gray-900">Security Tips</h3>
-      </div>
-      <div className="space-y-3">
-        <div className="flex items-start gap-2">
-          <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-gray-700">Use a strong password with at least 8 characters</p>
-        </div>
-        <div className="flex items-start gap-2">
-          <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-gray-700">Include numbers, symbols, and mixed case letters</p>
-        </div>
-        <div className="flex items-start gap-2">
-          <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-gray-700">Never share your password with anyone</p>
-        </div>
-        <div className="flex items-start gap-2">
-          <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-gray-700">Change your password every 3-6 months</p>
-        </div>
-      </div>
-    </div>
-*/}
-    {/* Profile Completeness */}
-    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-      <h3 className="font-bold text-gray-900 mb-3">Profile Completeness</h3>
-      
-      <div className="space-y-3">
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-gray-600">Profile Photo</span>
-            <span className="text-sm font-semibold text-gray-900">
-              {profilePhoto ? '✓' : '○'}
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className={`h-2 rounded-full transition-all ${profilePhoto ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
-            ></div>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-gray-600">Full Name</span>
-            <span className="text-sm font-semibold text-gray-900">
-              {fullName ? '✓' : '○'}
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className={`h-2 rounded-full transition-all ${fullName ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
-            ></div>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-gray-600">Phone Number</span>
-            <span className="text-sm font-semibold text-gray-900">
-              {phoneNumber ? '✓' : '○'}
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className={`h-2 rounded-full transition-all ${phoneNumber ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
-            ></div>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-gray-600">Barangay</span>
-            <span className="text-sm font-semibold text-gray-900">
-              {barangay ? '✓' : '○'}
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className={`h-2 rounded-full transition-all ${barangay ? 'bg-green-500 w-full' : 'bg-gray-300 w-0'}`}
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 pt-4 border-t">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-gray-700">Overall</span>
-          <span className="text-sm font-bold text-blue-600">
-            {(() => {
-              const fields = [profilePhoto, fullName, phoneNumber, barangay];
-              const completed = fields.filter(f => f).length;
-              return Math.round((completed / fields.length) * 100);
-            })()}%
-          </span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-3 mt-2">
-          <div 
-            className="h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
-            style={{ 
-              width: `${(() => {
-                const fields = [profilePhoto, fullName, phoneNumber, barangay];
-                const completed = fields.filter(f => f).length;
-                return (completed / fields.length) * 100;
-              })()}%` 
-            }}
-          ></div>
-        </div>
-      </div>
-    </div>
-
-    {/* Account Information */}
-    <div className="bg-white rounded-lg shadow-sm p-4">
-      <h3 className="font-bold text-gray-900 mb-3">Account Information</h3>
-      <div className="space-y-3">
-        <div>
-          <p className="text-xs text-gray-500 uppercase">Account Status</p>
-          <p className="text-sm font-semibold text-green-600 flex items-center gap-1 mt-1">
-            <CheckCircle className="w-4 h-4" />
-            Active
-          </p>
-        </div>
-        <div className="border-t pt-3">
-          <p className="text-xs text-gray-500 uppercase">Member Since</p>
-          <p className="text-sm font-semibold text-gray-900 mt-1">
-            {userData?.created_at 
-              ? new Date(userData.created_at).toLocaleDateString('en-US', { 
-                  month: 'long', 
-                  year: 'numeric' 
-                })
-              : 'N/A'
-            }
-          </p>
-        </div>
-        <div className="border-t pt-3">
-          <p className="text-xs text-gray-500 uppercase">Last Updated</p>
-          <p className="text-sm font-semibold text-gray-900 mt-1">
-            {userData?.updated_at 
-              ? new Date(userData.updated_at).toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric',
-                  year: 'numeric' 
-                })
-              : 'Never'
-            }
-          </p>
-        </div>
-      </div>
-    </div>
-  </>
-)}
-          </aside>
-        </div>
-      </div>
-      </div>
+            {/* Account Information */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="font-bold text-gray-900 mb-3">Account Information</h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Account Status</p>
+                  <p className="text-sm font-semibold text-green-600 flex items-center gap-1 mt-1">
+                    <CheckCircle className="w-4 h-4" />
+                    Active
+                  </p>
+                </div>
+                <div className="border-t pt-3">
+                  <p className="text-xs text-gray-500 uppercase">Member Since</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-1">
+                    {userData?.created_at 
+                      ? new Date(userData.created_at).toLocaleDateString('en-US', { 
+                          month: 'long', 
+                          year: 'numeric' 
+                        })
+                      : 'N/A'
+                    }
+                  </p>
+                </div>
+                <div className="border-t pt-3">
+                  <p className="text-xs text-gray-500 uppercase">Last Updated</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-1">
+                    {userData?.updated_at 
+                      ? new Date(userData.updated_at).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: 'numeric' 
+                        })
+                      : 'Never'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+                  </aside>
+                </div>
+              </div>
+              </div>
 
  {/* ========== FOOTER ========== */}
       <footer className="bg-white border-t flex-shrink-0">
-  <div className="max-w-7xl mx-auto px-4 py-2">
-          <div className="flex items-center justify-between text-xs text-gray-600">
-            <p>© 2024 Online Sumbungan - Residents' Portal</p>
-            <div className="flex gap-4">
-              <a href="#" className="hover:text-blue-600">Privacy</a>
-              <a href="#" className="hover:text-blue-600">Terms</a>
-              <a href="#" className="hover:text-blue-600">Guidelines</a>
+    <div className="max-w-7xl mx-auto px-4 py-2">
+            <div className="flex items-center justify-between text-xs text-gray-600">
+              <p>© 2024 Online Sumbungan - Residents' Portal</p>
+              <div className="flex gap-4">
+                <a href="#" className="hover:text-blue-600">Privacy</a>
+                <a href="#" className="hover:text-blue-600">Terms</a>
+                <a href="#" className="hover:text-blue-600">Guidelines</a>
+              </div>
             </div>
           </div>
-        </div>
       </footer>
     </div>
   );
