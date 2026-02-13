@@ -12,7 +12,8 @@ import {
   ThumbsUp, ThumbsDown, Share2, LogOut, Calendar,
   Activity, CheckCircle, Clock, Megaphone, Trees, Send, Flame,
   ShieldCheck, Ambulance, Building2, Phone, Backpack, UserRound, Users,
-   ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight, X, XCircle, Eye, Settings, Camera, Lock, Save 
+  ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight, X, XCircle, Eye,
+  Settings, Camera, Lock, Save 
 } from "lucide-react";
 
 
@@ -1640,8 +1641,8 @@ if (showFileReport) {
 
   // ========== MAIN RENDER ==========
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b sticky top-0 z-50">
+  <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+<header className="bg-white border-b flex-shrink-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
 
            {/* Logo and title */}
@@ -1703,117 +1704,118 @@ if (showFileReport) {
       </header>
 
 
-      {/* ========== MAIN CONTENT ========== */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-12 gap-6">
-          
-          {/* ========== LEFT SIDEBAR ========== */}
-          <aside className="col-span-3">
-            <div className="bg-white rounded-lg shadow-sm p-4 space-y-2">
+   {/* ========== MAIN CONTENT ========== */}
+      <div className="flex-1 overflow-hidden">
+  <div className="max-w-7xl mx-auto px-4 py-4 h-full overflow-hidden">
+<div className="grid grid-cols-12 gap-6 h-full overflow-hidden">
+            
+            {/* ========== LEFT SIDEBAR ========== */}
+            <aside className="col-span-3">
+              <div className="bg-white rounded-lg shadow-sm p-4 space-y-2">
 
-            {/* Navigation menu */}
-              <button 
-                onClick={() => setActiveTab('feed')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-semibold ${
-                  activeTab === 'feed' 
-                    ? 'bg-blue-50 text-blue-600' 
-                    : 'hover:bg-gray-50 text-gray-700'
-                }`}
-              >
-                <Home className="w-5 h-5" />
-                Home Feed
-              </button>
-
-              <button 
-                onClick={() => setActiveTab('reports')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-semibold ${
-                  activeTab === 'reports' 
-                    ? 'bg-blue-50 text-blue-600' 
-                    : 'hover:bg-gray-50 text-gray-700'
-                }`}
-              >
-                <FileText className="w-5 h-5" />
-                My Reports
-              </button>
-
-              {/* Local services section */}
-                <div className="pt-4 border-t">
-                  <p className="text-xs font-semibold text-gray-500 uppercase px-4 mb-3">
-                    Local Services
-                  </p>
-
-                  {/* Local Alerts */}
-                  <button 
-                    onClick={() => setActiveTab('alerts')}
-                    className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg text-left ${
-                      activeTab === 'alerts' ? 'bg-red-50 text-red-600' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 ${activeTab === 'alerts' ? 'bg-red-200' : 'bg-red-100'} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                      <AlertTriangle className="w-5 h-5 text-red-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 leading-tight">
-                        Local Alerts
-                      </p>
-                      <p className="text-xs font-semibold text-red-600">
-                        EMERGENCY
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Announcements */}
-                  <button 
-                    onClick={() => setActiveTab('announcements')}
-                    className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg text-left ${
-                      activeTab === 'announcements' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 ${activeTab === 'announcements' ? 'bg-blue-200' : 'bg-blue-100'} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                      <Bell className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 leading-tight">
-                        Announcements
-                      </p>
-                      <p className="text-xs font-semibold text-gray-500">
-                        COMMUNITY
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Parks & Recreation */}
-                  <button 
-                    onClick={() => setActiveTab('parks')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left ${
-                      activeTab === 'parks' ? 'bg-green-50 text-green-600' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 ${activeTab === 'parks' ? 'bg-green-200' : 'bg-green-100'} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                      <Trees className="w-5 h-5 text-green-600" />
-                    </div>
-                    <p className="font-semibold text-gray-900">
-                      Local Attractions
-                    </p>
-                  </button>
-          
-                </div>
-
-              {/* Logout button */}
-              <div className="pt-4">
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-red-50 text-red-600"
+              {/* Navigation menu */}
+                <button 
+                  onClick={() => setActiveTab('feed')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-semibold ${
+                    activeTab === 'feed' 
+                      ? 'bg-blue-50 text-blue-600' 
+                      : 'hover:bg-gray-50 text-gray-700'
+                  }`}
                 >
-                  <LogOut className="w-5 h-5" />
-                  Logout
+                  <Home className="w-5 h-5" />
+                  Home Feed
                 </button>
+
+                <button 
+                  onClick={() => setActiveTab('reports')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-semibold ${
+                    activeTab === 'reports' 
+                      ? 'bg-blue-50 text-blue-600' 
+                      : 'hover:bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  <FileText className="w-5 h-5" />
+                  My Reports
+                </button>
+
+                {/* Local services section */}
+                  <div className="pt-4 border-t">
+                    <p className="text-xs font-semibold text-gray-500 uppercase px-4 mb-3">
+                      Local Services
+                    </p>
+
+                    {/* Local Alerts */}
+                    <button 
+                      onClick={() => setActiveTab('alerts')}
+                      className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg text-left ${
+                        activeTab === 'alerts' ? 'bg-red-50 text-red-600' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 ${activeTab === 'alerts' ? 'bg-red-200' : 'bg-red-100'} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 leading-tight">
+                          Local Alerts
+                        </p>
+                        <p className="text-xs font-semibold text-red-600">
+                          EMERGENCY
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* Announcements */}
+                    <button 
+                      onClick={() => setActiveTab('announcements')}
+                      className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg text-left ${
+                        activeTab === 'announcements' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 ${activeTab === 'announcements' ? 'bg-blue-200' : 'bg-blue-100'} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                        <Bell className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 leading-tight">
+                          Announcements
+                        </p>
+                        <p className="text-xs font-semibold text-gray-500">
+                          COMMUNITY
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* Parks & Recreation */}
+                    <button 
+                      onClick={() => setActiveTab('parks')}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left ${
+                        activeTab === 'parks' ? 'bg-green-50 text-green-600' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 ${activeTab === 'parks' ? 'bg-green-200' : 'bg-green-100'} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                        <Trees className="w-5 h-5 text-green-600" />
+                      </div>
+                      <p className="font-semibold text-gray-900">
+                        Local Attractions
+                      </p>
+                    </button>
+            
+                  </div>
+
+                {/* Logout button */}
+                <div className="pt-4">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-red-50 text-red-600"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    Logout
+                  </button>
+                </div>
               </div>
-            </div>
-          </aside>
+            </aside>
 
          {/* ========== CENTER FEED ========== */}
-    <main className="col-span-6">
+    <main className="col-span-6 h-full overflow-hidden">
       {/* ========== CREATE/EDIT POST MODAL ========== */}
       {showPostModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -1974,15 +1976,20 @@ if (showFileReport) {
                 )}
               </div>
 
-              <label className="flex items-center gap-2 mt-4 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-                <input
-                  type="checkbox"
-                  checked={isAnonymous}
-                  onChange={(e) => setIsAnonymous(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700">Post anonymously</span>
-              </label>
+             {!editingPost && (
+                <label className="flex items-center gap-2 mt-4 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                  <input
+                    type="checkbox"
+                    checked={isAnonymous}
+                    onChange={(e) => setIsAnonymous(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Post anonymously
+                  </span>
+                </label>
+              )}
+
             </div>
 
             <div className="p-4 border-t bg-gray-50">
@@ -2099,6 +2106,7 @@ if (showFileReport) {
 
   {/* ========== FEED TAB ========== */}
   {activeTab === 'feed' && (
+  <div className="h-full overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
     <>
           <button
             onClick={() => setShowPostModal(true)}
@@ -2647,9 +2655,12 @@ if (showFileReport) {
         ))
       )}
     </>
+      </div>
   )}
 
   {activeTab === 'reports' && (
+    <div className="h-full overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+
   <>
     {/* Header */}
     <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
@@ -2825,330 +2836,338 @@ if (showFileReport) {
       </div>
     </div>
   </>
+    </div>
 )}
 
 {/* ========== ALERTS TAB ========== */}
 {activeTab === 'alerts' && (
-  <div className="space-y-6">
-
-    {/* Header */}
-    <div className="flex items-center justify-between">
-      <div>
-        <h2 className="text-xl font-bold">LOCAL ALERTS</h2>
-        <p className="text-sm text-gray-500">
-          Verified real-time alerts for your immediate area.
-        </p>
-      </div>
-      {alerts.length > 0 && (
-        <span className="px-3 py-1 text-xs font-semibold text-red-600 bg-red-100 rounded-full">
-          {alerts.filter(a => a.urgency === 'critical').length || alerts.length} CRITICAL ALERT{alerts.length !== 1 ? 'S' : ''}
-        </span>
-      )}
-    </div>
-
-    {/* Loading State */}
-    {alertsLoading && (
-      <div className="text-center py-12">
-        <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-sm text-gray-500 mt-2">Loading alerts...</p>
-      </div>
-    )}
-
-    {/* No Alerts */}
-    {!alertsLoading && alerts.length === 0 && (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Info className="w-8 h-8 text-green-600" />
-        </div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2">No Active Alerts</h3>
-        <p className="text-sm text-gray-500">
-          There are currently no emergency alerts for your area. Check back later for updates.
-        </p>
-      </div>
-    )}
-
-    {/* Alert Cards */}
-    {!alertsLoading && alerts.map((alert) => {
-      const urgencyStyle = getUrgencyColor(alert.urgency);
-      
-      return (
-        <div key={alert.id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Left accent */}
-          <div className={`absolute left-0 top-0 h-full w-1.5 ${urgencyStyle.bg}`} />
-
-          <div className="p-6 space-y-4">
-            {/* Top row */}
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg ${urgencyStyle.light} flex items-center justify-center`}>
-                  <AlertTriangle className={`w-5 h-5 ${urgencyStyle.text}`} />
-                </div>
-                <div>
-                  <span className={`text-xs font-semibold text-white ${urgencyStyle.badge} px-2 py-0.5 rounded uppercase`}>
-                    {alert.urgency}
-                  </span>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {formatTimeAgo(alert.created_at)} • {getCategoryLabel(alert.category)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Title */}
-            <h3 className="text-lg font-bold">
-              {alert.title}
-            </h3>
-
-            {/* Description */}
-            <p className="text-sm text-gray-700 leading-relaxed">
-              {alert.description}
+  <div className="h-full flex flex-col overflow-hidden">
+    <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">LOCAL ALERTS</h2>
+            <p className="text-sm text-gray-500">
+              Verified real-time alerts for your immediate area.
             </p>
-
-            {/* Content grid */}
-            <div className="grid md:grid-cols-2 gap-4">
-              {alert.required_action && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className={`text-xs font-semibold ${urgencyStyle.text} mb-1`}>
-                    REQUIRED ACTION
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    {alert.required_action}
-                  </p>
-                </div>
-              )}
-
-              {alert.affected_areas && alert.affected_areas.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    AFFECTED AREAS
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    {alert.affected_areas.join(', ')}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            {alert.estimated_resolution && (
-              <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                <Clock className="w-4 h-4 text-gray-400" />
-                <p className="text-xs text-gray-500">
-                  Estimated Resolution: <span className="font-medium text-gray-700">{alert.estimated_resolution}</span>
-                </p>
-              </div>
-            )}
           </div>
+          {alerts.length > 0 && (
+            <span className="px-3 py-1 text-xs font-semibold text-red-600 bg-red-100 rounded-full">
+              {alerts.filter(a => a.urgency === 'critical').length || alerts.length} CRITICAL ALERT{alerts.length !== 1 ? 'S' : ''}
+            </span>
+          )}
         </div>
-      );
-    })}
 
+        {/* Loading State */}
+        {alertsLoading && (
+          <div className="text-center py-12">
+            <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm text-gray-500 mt-2">Loading alerts...</p>
+          </div>
+        )}
+
+        {/* No Alerts */}
+        {!alertsLoading && alerts.length === 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Info className="w-8 h-8 text-green-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">No Active Alerts</h3>
+            <p className="text-sm text-gray-500">
+              There are currently no emergency alerts for your area. Check back later for updates.
+            </p>
+          </div>
+        )}
+
+        {/* Alert Cards */}
+        {!alertsLoading && alerts.map((alert) => {
+          const urgencyStyle = getUrgencyColor(alert.urgency);
+          
+          return (
+            <div key={alert.id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              {/* Left accent */}
+              <div className={`absolute left-0 top-0 h-full w-1.5 ${urgencyStyle.bg}`} />
+
+              <div className="p-6 space-y-4">
+                {/* Top row */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg ${urgencyStyle.light} flex items-center justify-center`}>
+                      <AlertTriangle className={`w-5 h-5 ${urgencyStyle.text}`} />
+                    </div>
+                    <div>
+                      <span className={`text-xs font-semibold text-white ${urgencyStyle.badge} px-2 py-0.5 rounded uppercase`}>
+                        {alert.urgency}
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatTimeAgo(alert.created_at)} • {getCategoryLabel(alert.category)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Title */}
+                <h3 className="text-lg font-bold">
+                  {alert.title}
+                </h3>
+
+                {/* Description */}
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {alert.description}
+                </p>
+
+                {/* Content grid */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  {alert.required_action && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className={`text-xs font-semibold ${urgencyStyle.text} mb-1`}>
+                        REQUIRED ACTION
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        {alert.required_action}
+                      </p>
+                    </div>
+                  )}
+
+                  {alert.affected_areas && alert.affected_areas.length > 0 && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        AFFECTED AREAS
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        {alert.affected_areas.join(', ')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                {alert.estimated_resolution && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    <p className="text-xs text-gray-500">
+                      Estimated Resolution: <span className="font-medium text-gray-700">{alert.estimated_resolution}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   </div>
 )}
 
 
+{/* ========== ANNOUNCEMENTS TAB - COMPLETE CODE ========== */}
 {activeTab === "announcements" && (
-  <div className="space-y-6">
-
-    {/* ===== HEADER ===== */}
-    <div className="flex items-start justify-between">
-      <div>
-        <h2 className="text-xl font-bold">Local Announcements</h2>
-        <p className="text-sm text-gray-500 max-w-md">
-          The latest official updates, policies, and press releases for our community.
-        </p>
-      </div>
-    </div>
-
-    {/* ===== LOADING STATE ===== */}
-    {announcementsLoading && (
-      <div className="text-center py-12">
-        <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-sm text-gray-500 mt-2">Loading announcements...</p>
-      </div>
-    )}
-
-    {/* ===== EMPTY STATE ===== */}
-    {!announcementsLoading && announcements.length === 0 && (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Bell className="w-8 h-8 text-blue-600" />
-        </div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2">No Announcements Yet</h3>
-        <p className="text-sm text-gray-500">
-          Check back later for community updates and announcements.
-        </p>
-      </div>
-    )}
-
-    {/* ===== ANNOUNCEMENTS LIST ===== */}
-    {!announcementsLoading &&
-      announcements.map((announcement) => {
-        const postedDate = formatDateTime(announcement.created_at);
-        const eventDate = announcement.scheduled_date
-          ? formatDateTime(announcement.scheduled_date)
-          : null;
-
-        return (
-          <div
-            key={announcement.id}
-            className="bg-white rounded-xl shadow-sm border p-6 space-y-4"
-          >
-            {/* META (DATE POSTED) */}
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              {getCategoryBadge(announcement.category)}
-              <span>•</span>
-            <span>
-              {" "}
-              {getRelativeTime(announcement.created_at) ? (
-                <span className="font-medium">
-                  {getRelativeTime(announcement.created_at)}
-                </span>
-              ) : (
-                `on ${postedDate.date}`
-              )}
-            </span>
-            </div>
-
-            {/* TITLE */}
-            <h3 className="text-lg font-bold text-gray-900">
-              {announcement.title}
-            </h3>
-
-            {/* DESCRIPTION */}
-            <p className="text-sm text-gray-600">
-              {announcement.description}
+  <div className="h-full flex flex-col overflow-hidden">
+    <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+      <div className="space-y-6">
+        {/* ===== HEADER ===== */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-xl font-bold">Local Announcements</h2>
+            <p className="text-sm text-gray-500 max-w-md">
+              The latest official updates, policies, and press releases for our community.
             </p>
-
-            {/* FOOTER (EVENT INFO) */}
-            <div className="flex flex-wrap gap-6 pt-3 text-xs text-gray-500">
-              {announcement.location && (
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-4 h-4" />
-                  {announcement.location}
-                </div>
-              )}
-
-              {eventDate && (
-                <div className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  {eventDate.date} • {eventDate.time}
-                </div>
-              )}
-            </div>
           </div>
-        );
-      })}
+        </div>
 
-    {/* ===== VIEW ANNOUNCEMENT MODAL ===== */}
-    {viewingAnnouncementId && (() => {
-      const announcement = announcements.find(
-        (a) => a.id === viewingAnnouncementId
-      );
-      if (!announcement) return null;
+        {/* ===== LOADING STATE ===== */}
+        {announcementsLoading && (
+          <div className="text-center py-12">
+            <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm text-gray-500 mt-2">Loading announcements...</p>
+          </div>
+        )}
 
-      const postedDate = formatDateTime(announcement.created_at);
-      const eventDate = announcement.scheduled_date
-        ? formatDateTime(announcement.scheduled_date)
-        : null;
-
-      return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            
-            {/* MODAL HEADER */}
-            <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-gray-900">
-                Announcement Details
-              </h2>
-              <button
-                onClick={() => setViewingAnnouncementId(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        {/* ===== EMPTY STATE ===== */}
+        {!announcementsLoading && announcements.length === 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Bell className="w-8 h-8 text-blue-600" />
             </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">No Announcements Yet</h3>
+            <p className="text-sm text-gray-500">
+              Check back later for community updates and announcements.
+            </p>
+          </div>
+        )}
 
-            {/* MODAL CONTENT */}
-            <div className="p-6 space-y-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
+        {/* ===== ANNOUNCEMENTS LIST ===== */}
+        {!announcementsLoading &&
+          announcements.map((announcement) => {
+            const postedDate = formatDateTime(announcement.created_at);
+            const eventDate = announcement.scheduled_date
+              ? formatDateTime(announcement.scheduled_date)
+              : null;
+
+            return (
+              <div
+                key={announcement.id}
+                className="bg-white rounded-xl shadow-sm border p-6 space-y-4"
+              >
+                {/* META (DATE POSTED) */}
+                <div className="flex items-center gap-2 text-xs text-gray-500">
                   {getCategoryBadge(announcement.category)}
+                  <span>•</span>
+                  <span>
+                    {" "}
+                    {getRelativeTime(announcement.created_at) ? (
+                      <span className="font-medium">
+                        {getRelativeTime(announcement.created_at)}
+                      </span>
+                    ) : (
+                      `on ${postedDate.date}`
+                    )}
+                  </span>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900">
+
+                {/* TITLE */}
+                <h3 className="text-lg font-bold text-gray-900">
                   {announcement.title}
                 </h3>
-              </div>
 
-              {/* EVENT + LOCATION */}
-              <div className="grid grid-cols-2 gap-4 py-4 border-y">
-                <div>
-                  <div className="text-xs text-gray-500 mb-1">
-                    Event Schedule
-                  </div>
-                  {eventDate ? (
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      {eventDate.date} at {eventDate.time}
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-400">
-                      No event date provided
-                    </span>
-                  )}
-                </div>
-
-                {announcement.location && (
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1">Location</div>
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      {announcement.location}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* DESCRIPTION */}
-              <div>
-                <div className="text-xs text-gray-500 mb-2">Description</div>
-                <p className="text-gray-700 whitespace-pre-wrap">
+                {/* DESCRIPTION */}
+                <p className="text-sm text-gray-600">
                   {announcement.description}
                 </p>
+
+                {/* FOOTER (EVENT INFO) */}
+                <div className="flex flex-wrap gap-6 pt-3 text-xs text-gray-500">
+                  {announcement.location && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {announcement.location}
+                    </div>
+                  )}
+
+                  {eventDate && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {eventDate.date} • {eventDate.time}
+                    </div>
+                  )}
+                </div>
               </div>
+            );
+          })}
 
-              {/* POSTED INFO */}
-              <div className="pt-4 border-t">
-                <div className="text-xs text-gray-500">
-                  Posted{" "}
-                  {getRelativeTime(announcement.created_at) ||
-                    `on ${postedDate.date}`}{" "}
-                  by {announcement.author || "Admin"}
+        {/* ===== VIEW ANNOUNCEMENT MODAL ===== */}
+        {viewingAnnouncementId && (() => {
+          const announcement = announcements.find(
+            (a) => a.id === viewingAnnouncementId
+          );
+          if (!announcement) return null;
 
+          const postedDate = formatDateTime(announcement.created_at);
+          const eventDate = announcement.scheduled_date
+            ? formatDateTime(announcement.scheduled_date)
+            : null;
+
+          return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                
+                {/* MODAL HEADER */}
+                <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-white">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Announcement Details
+                  </h2>
+                  <button
+                    onClick={() => setViewingAnnouncementId(null)}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* MODAL CONTENT */}
+                <div className="p-6 space-y-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      {getCategoryBadge(announcement.category)}
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      {announcement.title}
+                    </h3>
+                  </div>
+
+                  {/* EVENT + LOCATION */}
+                  <div className="grid grid-cols-2 gap-4 py-4 border-y">
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">
+                        Event Schedule
+                      </div>
+                      {eventDate ? (
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          {eventDate.date} at {eventDate.time}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">
+                          No event date provided
+                        </span>
+                      )}
+                    </div>
+
+                    {announcement.location && (
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">Location</div>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <MapPin className="w-4 h-4 text-gray-400" />
+                          {announcement.location}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* DESCRIPTION */}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-2">Description</div>
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {announcement.description}
+                    </p>
+                  </div>
+
+                  {/* POSTED INFO */}
+                  <div className="pt-4 border-t">
+                    <div className="text-xs text-gray-500">
+                      Posted{" "}
+                      {getRelativeTime(announcement.created_at) ||
+                        `on ${postedDate.date}`}{" "}
+                      by {announcement.author || "Admin"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* MODAL FOOTER */}
+                <div className="p-6 border-t bg-gray-50 flex justify-end">
+                  <button
+                    onClick={() => setViewingAnnouncementId(null)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Close
+                  </button>
                 </div>
               </div>
             </div>
+          );
+        })()}
 
-            {/* MODAL FOOTER */}
-            <div className="p-6 border-t bg-gray-50 flex justify-end">
-              <button
-                onClick={() => setViewingAnnouncementId(null)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    })()}
+      </div>
+    </div>
   </div>
 )}
 
 
 {/* ========== PARKS & RECREATION TAB ========== */}
 {activeTab === 'parks' && (
+    <div className="h-full overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
   <div className="space-y-6">
     {/* Show park details if one is selected */}
     {viewingParkId ? (() => {
@@ -3419,10 +3438,14 @@ if (showFileReport) {
       </>
     )}
   </div>
+    </div>
+
 )}
 
 {/* ========== SETTINGS TAB ========== */}
 {activeTab === 'settings' && (
+    <div className="h-full overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+
   <div className="space-y-6">
     {/* Page Header */}
     <div className="bg-white rounded-lg shadow-sm p-6">
@@ -3643,6 +3666,8 @@ if (showFileReport) {
       </div>
     </div>
   </div>
+    </div>
+
 )}
 
 
@@ -3654,9 +3679,9 @@ if (showFileReport) {
             {activeTab === 'feed' && (
               <>
                 {/* ========== LOCAL ANNOUNCEMENTS WIDGET ========== */}
-                <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold">Local Announcements</h3>
+                <div className="bg-white rounded-lg shadow-sm p-4 mb-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-base">Local Announcements</h3>
                     <button 
                       onClick={() => setActiveTab('announcements')}
                       className="text-blue-600 text-sm font-semibold hover:underline"
@@ -3664,7 +3689,7 @@ if (showFileReport) {
                       See All
                     </button>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                       {dashboardAnnouncements.length === 0 ? (
                         <p className="text-sm text-gray-500">No announcements available.</p>
                       ) : (
@@ -3675,11 +3700,11 @@ if (showFileReport) {
 
                           return (
                             <div key={announcement.id} className="flex gap-3">
-                              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                                 <Bell className="w-5 h-5 text-blue-600" />
                               </div>
 
-                              <div>
+                              <div className="flex-1 min-w-0">
                                 <h4 className="font-semibold text-sm">
                                   {announcement.title}
                                 </h4>
@@ -3713,9 +3738,9 @@ if (showFileReport) {
                 </div>
 
                 {/* ========== ACTIVE REPORTS WIDGET ========== */}
-                <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold">My Active Reports</h3>
+                <div className="bg-white rounded-lg shadow-sm p-4 mb-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-base">My Active Reports</h3>
                     <button 
                     onClick={() => setActiveTab('reports')}
                       className="text-blue-600 text-sm font-semibold hover:underline"
@@ -3725,12 +3750,12 @@ if (showFileReport) {
                   </div>
                   
                   {loadingReports ? (
-                    <div className="flex items-center justify-center py-8">
+                    <div className="flex items-center justify-center py-6">
                       <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                     </div>
                   ) : userReports.length === 0 ? (
-                    <div className="text-center py-6">
-                      <FileText className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                    <div className="text-center py-5">
+                      <FileText className="w-11 h-11 text-gray-300 mx-auto mb-2" />
                       <p className="text-sm text-gray-500">No active reports</p>
                       <button
                         onClick={() => setShowFileReport(true)}
@@ -3740,7 +3765,7 @@ if (showFileReport) {
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {userReports.map((report) => {
                         const badge = getStatusBadge(report.status);
                         return (
@@ -3762,22 +3787,21 @@ if (showFileReport) {
                 {/* ========== COMMUNITY MISSION WIDGET ========== */}
                 <div className="bg-white rounded-lg shadow-sm p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <ThumbsUp className="w-6 h-6 text-blue-600" />
-                    <h3 className="font-bold">Community Mission</h3>
+                    <ThumbsUp className="w-5 h-5 text-blue-600" />
+                    <h3 className="font-semibold text-base">Community Mission</h3>
                   </div>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-sm text-gray-600 mb-3">
                     We aim to build a safer, more connected neighborhood through active participation and transparent communication.
                   </p>
                   <div className="flex gap-2">
-                    <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">Respectful</span>
-                    <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">Helpful</span>
-                    <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">Verified</span>
+                    <span className="text-xs bg-gray-100 px-2.5 py-1 rounded-full">Respectful</span>
+                    <span className="text-xs bg-gray-100 px-2.5 py-1 rounded-full">Helpful</span>
+                    <span className="text-xs bg-gray-100 px-2.5 py-1 rounded-full">Verified</span>
                   </div>
                 </div>
                 
               </>
             )}
-
 
  {/* REPORTS TAB SIDEBAR */}
   {activeTab === 'reports' && (
@@ -3809,137 +3833,136 @@ if (showFileReport) {
       </div>
     </>
   )}
-
-  {/* ALERTS TAB SIDEBAR */}
+{/* ALERTS TAB SIDEBAR */}
   {activeTab === 'alerts' && (
     <>
       {/* Quick Hotlines */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-bold tracking-wide text-gray-700">
-            QUICK HOTLINES
+      <div className="bg-white rounded-lg shadow-sm p-2.5 mb-2.5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-semibold text-gray-700">
+            Quick Hotlines
           </h3>
-          <span className="text-[10px] font-semibold text-red-600">
-            24/7 ACTIVE
+          <span className="text-[9px] font-semibold text-red-600">
+            24/7 Active
           </span>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           {/* Fire */}
-          <div className="flex items-center justify-between p-3 rounded-lg border">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-red-500 flex items-center justify-center">
-                <Flame className="w-5 h-5 text-white" />
+          <div className="flex items-center justify-between p-2 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-red-500 flex items-center justify-center">
+                <Flame className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="text-xs text-gray-500">FIRE DEPARTMENT</p>
-                <p className="text-sm font-semibold">911</p>
+                <p className="text-[10px] text-gray-500">Fire Department</p>
+                <p className="text-xs font-semibold">911</p>
               </div>
             </div>
             <a href="tel:911" className="text-gray-300 hover:text-red-600">
-              <Phone className="w-4 h-4" />
+              <Phone className="w-3.5 h-3.5" />
             </a>
           </div>
 
           {/* Police */}
-          <div className="flex items-center justify-between p-3 rounded-lg border">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5 text-white" />
+          <div className="flex items-center justify-between p-2 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                <ShieldCheck className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="text-xs text-gray-500">POLICE STATION</p>
-                <p className="text-sm font-semibold">117</p>
+                <p className="text-[10px] text-gray-500">Police Station</p>
+                <p className="text-xs font-semibold">117</p>
               </div>
             </div>
             <a href="tel:117" className="text-gray-300 hover:text-blue-600">
-              <Phone className="w-4 h-4" />
+              <Phone className="w-3.5 h-3.5" />
             </a>
           </div>
 
           {/* Medical */}
-          <div className="flex items-center justify-between p-3 rounded-lg border">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-sky-500 flex items-center justify-center">
-                <Ambulance className="w-5 h-5 text-white" />
+          <div className="flex items-center justify-between p-2 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center">
+                <Ambulance className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="text-xs text-gray-500">MEDICAL EMERGENCY</p>
-                <p className="text-sm font-semibold">166</p>
+                <p className="text-[10px] text-gray-500">Medical Emergency</p>
+                <p className="text-xs font-semibold">166</p>
               </div>
             </div>
             <a href="tel:166" className="text-gray-300 hover:text-sky-600">
-              <Phone className="w-4 h-4" />
+              <Phone className="w-3.5 h-3.5" />
             </a>
           </div>
 
           {/* Barangay */}
-          <div className="flex items-center justify-between p-3 rounded-lg border">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-green-600 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
+          <div className="flex items-center justify-between p-2 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center">
+                <Building2 className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="text-xs text-gray-500">BARANGAY HALL</p>
-                <p className="text-sm font-semibold">555-1234</p>
+                <p className="text-[10px] text-gray-500">Barangay Hall</p>
+                <p className="text-xs font-semibold">555-1234</p>
               </div>
             </div>
             <a href="tel:5551234" className="text-gray-300 hover:text-green-600">
-              <Phone className="w-4 h-4" />
+              <Phone className="w-3.5 h-3.5" />
             </a>
           </div>
         </div>
       </div>
 
       {/* Safety Tips */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-bold tracking-wide text-gray-700">
-            SAFETY TIPS & PREPAREDNESS
+      <div className="bg-white rounded-lg shadow-sm p-2.5 mb-2.5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-semibold text-gray-700">
+            Safety Tips & Preparedness
           </h3>
-          <span className="text-[8px] font-semibold text-blue-600">
-            COMMUNITY
+          <span className="text-[9px] font-semibold text-blue-600">
+            Community
           </span>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex gap-3 p-3 rounded-lg bg-gray-50">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-              <Backpack className="w-4 h-4 text-blue-600" />
+        <div className="space-y-2">
+          <div className="flex gap-2 p-2 rounded-lg bg-gray-50">
+            <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <Backpack className="w-3.5 h-3.5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold">
+              <p className="text-xs font-semibold">
                 Prepare a 72-hour emergency kit
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-[10px] text-gray-600">
                 Include water, non-perishable food, flashlights, and first-aid.
               </p>
             </div>
           </div>
 
-          <div className="flex gap-3 p-3 rounded-lg bg-gray-50">
-            <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
-              <UserRound className="w-4 h-4 text-orange-600" />
+          <div className="flex gap-2 p-2 rounded-lg bg-gray-50">
+            <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+              <UserRound className="w-3.5 h-3.5 text-orange-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold">
+              <p className="text-xs font-semibold">
                 Check on elderly neighbors
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-[10px] text-gray-600">
                 Ensure access to heat, water, and medicine.
               </p>
             </div>
           </div>
 
-          <div className="flex gap-3 p-3 rounded-lg bg-gray-50">
-            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-              <Users className="w-4 h-4 text-green-600" />
+          <div className="flex gap-2 p-2 rounded-lg bg-gray-50">
+            <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+              <Users className="w-3.5 h-3.5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold">
+              <p className="text-xs font-semibold">
                 Establish a contact plan
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-[10px] text-gray-600">
                 Designate an out-of-town contact.
               </p>
             </div>
@@ -3948,46 +3971,46 @@ if (showFileReport) {
       </div>
 
       {/* Public Safety Notice */}
-      <div className="bg-white rounded-xl shadow-sm border-l-4 border-red-500 flex gap-3 p-4">
-        <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
-        <div>
-          <p className="text-xs font-semibold text-red-600">
-            PUBLIC SAFETY NOTICE
-          </p>
-          <p className="text-xs text-gray-600">
-            Verified information is updated every 15 minutes. For immediate
-            life-threatening emergencies, dial 911 directly.
-          </p>
-        </div>
-      </div>
+    {/* Public Safety Notice */}
+<div className="bg-white rounded-lg shadow-sm border-l-4 border-red-500 flex gap-2 p-2">
+  <AlertTriangle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
+  <div>
+    <p className="text-[10px] font-semibold text-red-600">
+      Public Safety Notice
+    </p>
+    <p className="text-[9px] text-gray-600 leading-tight">
+      Verified information is updated every 15 minutes. For immediate
+      life-threatening emergencies, dial 911 directly.
+    </p>
+  </div>
+</div>
     </>
   )}
-  
 
 {activeTab === "announcements" && (
   <>
     {/* ===== COMMUNITY CALENDAR ===== */}
-    <div className="bg-white rounded-xl shadow-sm border p-4 mb-4">
+    <div className="bg-white rounded-lg shadow-sm border p-2.5 mb-2.5">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2">
         <div>
-          <h3 className="font-semibold text-gray-900">
+          <h3 className="font-semibold text-xs text-gray-900">
             {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </h3>
-          <p className="text-xs text-gray-500 uppercase">
+          <p className="text-[9px] text-gray-500">
             Community Calendar
           </p>
         </div>
-        <div className="flex gap-2 text-gray-400 text-lg">
+        <div className="flex gap-1 text-gray-400 text-lg">
           <button 
             onClick={goToPreviousMonth}
-            className="hover:text-gray-600"
+            className="hover:text-gray-600 w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100"
           >
             ‹
           </button>
           <button 
             onClick={goToNextMonth}
-            className="hover:text-gray-600"
+            className="hover:text-gray-600 w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100"
           >
             ›
           </button>
@@ -3995,16 +4018,16 @@ if (showFileReport) {
       </div>
 
       {/* Weekdays */}
-      <div className="grid grid-cols-7 text-xs text-center text-gray-500 mb-2">
+      <div className="grid grid-cols-7 text-[9px] text-center text-gray-500 mb-1.5 font-semibold">
         {["SU", "MO", "TU", "WE", "TH", "FR", "SA"].map(day => (
-          <div key={day} className="font-semibold">
+          <div key={day}>
             {day}
           </div>
         ))}
       </div>
 
       {/* Dates */}
-      <div className="grid grid-cols-7 gap-1 text-sm text-center">
+      <div className="grid grid-cols-7 gap-1 text-[11px] text-center">
         {(() => {
           const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
           const days = [];
@@ -4025,11 +4048,11 @@ if (showFileReport) {
               <button
                 key={day}
                 onClick={() => setSelectedDate(date)}
-                className={`py-1.5 rounded-lg font-medium cursor-pointer transition-colors relative ${
+                className={`py-1.5 rounded font-medium cursor-pointer transition-colors relative ${
                   isToday
                     ? "bg-blue-600 text-white"
                     : isSelected 
-                    ? "bg-blue-100 text-blue-600 ring-2 ring-blue-600"
+                    ? "bg-blue-100 text-blue-600 ring-1 ring-blue-600"
                     : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
@@ -4045,148 +4068,145 @@ if (showFileReport) {
         })()}
       </div>
     </div>
+{/* ===== UPCOMING EVENTS ===== */}
+<div className="bg-white rounded-lg shadow-sm border p-2.5">
+  {/* Header */}
+  <div className="mb-2">
+    <h3 className="font-semibold text-gray-900 text-xs">
+      {selectedDate 
+        ? selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+        : 'Upcoming Events'
+      }
+    </h3>
+    {selectedDate && (
+      <button 
+        onClick={() => setSelectedDate(null)}
+        className="text-[9px] text-blue-600 font-semibold hover:underline mt-0.5 inline-flex items-center gap-0.5"
+      >
+        ← Back to all events
+      </button>
+    )}
+  </div>
 
-    {/* ===== UPCOMING EVENTS (FIXED UI) ===== */}
-    <div className="bg-white rounded-xl shadow-sm border p-4">
-      {/* Header */}
-      <div className="mb-4">
-        <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide">
-          {selectedDate 
-            ? selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-            : 'Upcoming Events'
-          }
-        </h3>
-        {selectedDate && (
-          <button 
-            onClick={() => setSelectedDate(null)}
-            className="text-xs text-blue-600 font-semibold hover:underline mt-1"
+  {/* Events List */}
+  <div className="space-y-1.5">
+    {(() => {
+      const eventsToShow = selectedDate 
+      ? getAnnouncementsForDate(selectedDate)
+      : announcements
+          .filter(ann => ann.status === 'published')
+          .sort((a, b) => {
+            const dateA = new Date(a.scheduled_date || a.created_at).getTime();
+            const dateB = new Date(b.scheduled_date || b.created_at).getTime();
+            return dateA - dateB;
+          })
+          .slice(0, visibleCount);
+
+      
+      if (eventsToShow.length === 0) {
+        return (
+          <div className="text-center py-3">
+            <Calendar className="w-7 h-7 text-gray-300 mx-auto mb-1.5" />
+            <p className="text-[10px] text-gray-500 font-medium">
+              {selectedDate 
+                ? 'No events on this date'
+                : 'No upcoming events'
+              }
+            </p>
+          </div>
+        );
+      }
+
+      return eventsToShow.map(announcement => {
+        const eventDate = new Date(announcement.scheduled_date || announcement.created_at);
+        const month = eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+        const day = eventDate.getDate();
+        const time = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        
+        return (
+          <div 
+            key={announcement.id} 
+            className="border rounded-md p-2 hover:border-blue-300 hover:bg-blue-50/50 transition-all cursor-pointer"
+            onClick={() => setViewingAnnouncementId(announcement.id)}
           >
-            ← Back to all events
-          </button>
-        )}
-      </div>
-
-      {/* Events List */}
-  <div className="space-y-3">
-        {(() => {
-          const eventsToShow = selectedDate 
-          ? getAnnouncementsForDate(selectedDate)
-          : announcements
-              .filter(ann => ann.status === 'published')
-              .sort((a, b) => {
-                const dateA = new Date(a.scheduled_date || a.created_at).getTime();
-                const dateB = new Date(b.scheduled_date || b.created_at).getTime();
-                return dateA - dateB;
-              })
-              .slice(0, visibleCount);
-
-          
-          if (eventsToShow.length === 0) {
-            return (
-              <div className="text-center py-8">
-                <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500 font-medium">
-                  {selectedDate 
-                    ? 'No events on this date'
-                    : 'No upcoming events'
-                  }
-                </p>
-              </div>
-            );
-          }
-
-          return eventsToShow.map(announcement => {
-            const eventDate = new Date(announcement.scheduled_date || announcement.created_at);
-            const month = eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-            const day = eventDate.getDate();
-            const time = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-            
-            return (
-              <div 
-                key={announcement.id} 
-                className="border rounded-lg p-3 hover:border-blue-300 hover:bg-blue-50/50 transition-all cursor-pointer"
-                onClick={() => setViewingAnnouncementId(announcement.id)}
-              >
-                <div className="flex gap-3">
-                  {/* Date Badge */}
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-blue-600 text-white rounded-lg flex flex-col items-center justify-center">
-                      <div className="text-[10px] font-semibold leading-none">{month}</div>
-                      <div className="text-lg font-bold leading-none mt-0.5">{day}</div>
-                    </div>
-                  </div>
-
-                  {/* Event Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h4 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">
-                        {announcement.title}
-                      </h4>
-                    </div>
-
-                    {/* Category Badge */}
-                    <div className="mb-2">
-                      {getCategoryBadge(announcement.category)}
-                    </div>
-
-                    {/* Time */}
-                    <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
-                      <Clock className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">{time}</span>
-                    </div>
-                    
-                    {/* Location */}
-                    {announcement.location && (
-                      <div className="flex items-center gap-1 text-xs text-gray-600">
-                        <MapPin className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">{announcement.location}</span>
-                      </div>
-                    )}
-                  </div>
+            <div className="flex gap-2">
+              {/* Date Badge */}
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-600 text-white rounded flex flex-col items-center justify-center">
+                  <div className="text-[7px] font-semibold leading-none">{month}</div>
+                  <div className="text-sm font-bold leading-none mt-0.5">{day}</div>
                 </div>
               </div>
-            );
-          });
-        })()}
-      </div>
 
-     {/* LOAD MORE BUTTON */}
-        {!selectedDate && (() => {
-          const total = announcements.filter(ann => ann.status === 'published').length;
+              {/* Event Details */}
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-gray-900 text-[11px] leading-tight line-clamp-2 mb-0.5">
+                  {announcement.title}
+                </h4>
 
-          // SHOW LESS
-          if (visibleCount > INITIAL_COUNT) {
-            return (
-              <button
-                onClick={() => setVisibleCount(INITIAL_COUNT)}
-                className="w-full text-sm text-gray-600 font-semibold py-3 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1 mt-3 border-t pt-3"
-              >
-                Show less
-                <ChevronUp className="w-4 h-4" />
-              </button>
-            );
-          }
+                {/* Category Badge */}
+                <div className="mb-1">
+                  {getCategoryBadge(announcement.category)}
+                </div>
 
-          // LOAD MORE
-          if (total > visibleCount) {
-            return (
-              <button
-                onClick={() => setVisibleCount(prev => prev + LOAD_STEP)}
-                className="w-full text-sm text-blue-600 font-semibold py-3 hover:bg-blue-50 rounded-lg flex items-center justify-center gap-1 mt-3 border-t pt-3"
-              >
-                Load more
-                <ChevronDown className="w-4 h-4" />
-              </button>
-            );
-          }
-
-          return null;
-        })()}
-
-
+                {/* Time */}
+                <div className="flex items-center gap-1 text-[9px] text-gray-600 mb-0.5">
+                  <Clock className="w-2.5 h-2.5 flex-shrink-0" />
+                  <span className="truncate">{time}</span>
+                </div>
+                
+                {/* Location */}
+                {announcement.location && (
+                  <div className="flex items-center gap-1 text-[9px] text-gray-600">
+                    <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+                    <span className="truncate">{announcement.location}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </>
-        )}
+          </div>
+        );
+      });
+    })()}
+  </div>
+
+ {/* LOAD MORE BUTTON */}
+    {!selectedDate && (() => {
+      const total = announcements.filter(ann => ann.status === 'published').length;
+
+      // SHOW LESS
+      if (visibleCount > INITIAL_COUNT) {
+        return (
+          <button
+            onClick={() => setVisibleCount(INITIAL_COUNT)}
+            className="w-full text-[10px] text-gray-600 font-semibold py-1.5 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1 mt-2 border-t pt-2"
+          >
+            Show less
+            <ChevronUp className="w-3 h-3" />
+          </button>
+        );
+      }
+
+      // LOAD MORE
+      if (total > visibleCount) {
+        return (
+          <button
+            onClick={() => setVisibleCount(prev => prev + LOAD_STEP)}
+            className="w-full text-[10px] text-blue-600 font-semibold py-1.5 hover:bg-blue-50 rounded-lg flex items-center justify-center gap-1 mt-2 border-t pt-2"
+          >
+            Load more
+            <ChevronDown className="w-3 h-3" />
+          </button>
+        );
+      }
+
+      return null;
+    })()}
+
+  </div>
+    </>
+  )}
+
 {activeTab === 'parks' && (
   <>
     {viewingParkId ? (() => {
@@ -4306,7 +4326,7 @@ if (showFileReport) {
 {/* SETTINGS TAB SIDEBAR */}
 {activeTab === 'settings' && (
   <>
-    {/* Account Security Tips */}
+    {/* Account Security Tips 
     <div className="bg-blue-50 rounded-lg shadow-sm p-4 mb-4">
       <div className="flex items-start gap-3 mb-3">
         <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
@@ -4333,7 +4353,7 @@ if (showFileReport) {
         </div>
       </div>
     </div>
-
+*/}
     {/* Profile Completeness */}
     <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
       <h3 className="font-bold text-gray-900 mb-3">Profile Completeness</h3>
@@ -4465,11 +4485,12 @@ if (showFileReport) {
           </aside>
         </div>
       </div>
+      </div>
 
-      {/* ========== FOOTER ========== */}
-      <footer className="bg-white border-t mt-12">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between text-sm text-gray-600">
+ {/* ========== FOOTER ========== */}
+      <footer className="bg-white border-t flex-shrink-0">
+  <div className="max-w-7xl mx-auto px-4 py-2">
+          <div className="flex items-center justify-between text-xs text-gray-600">
             <p>© 2024 Online Sumbungan - Residents' Portal</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-blue-600">Privacy</a>
@@ -4482,5 +4503,4 @@ if (showFileReport) {
     </div>
   );
 };
-
 export default Dashboard;

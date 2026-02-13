@@ -309,7 +309,7 @@ const FileReport = ({ onBack }: { onBack: () => void }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+<div className="h-screen bg-gray-100 flex overflow-hidden">
       {/* Left Panel - Form */}
       <div className="w-full lg:w-[430px] bg-white shadow-lg overflow-y-auto">
         {/* Header */}
