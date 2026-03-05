@@ -5,7 +5,7 @@ import AdminReportDetails from "./components/AdminReportDetails";
 import {
   LayoutDashboard, FileText, Bell, Users, Search, BellRing, LogOut, TrendingUp, Clock, CheckCircle, MapPin,
   Plus, Minus, Locate, Pencil, Trash2, ChevronLeft, ChevronRight, Circle, X, AlertTriangle, Info,
-  View, Eye, Trees, Copy, Upload
+  View, Eye, Trees, Copy, Upload, Megaphone
 } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -1603,7 +1603,7 @@ const priorityCounts = {
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <div className="w-64 bg-white shadow-lg flex flex-col">
-        <div className="p-6 border-b">
+        <div className="p-6 border-b border-r">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
               <MapPin className="w-6 h-6 text-white" />
@@ -1649,7 +1649,7 @@ const priorityCounts = {
               activeTab === "announcements" ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50"
             }`}
           >
-            <Bell className="w-5 h-5" />
+            <Megaphone className="w-5 h-5" />
             <span className="font-medium">Announcements</span>
           </button>
           <button
@@ -1691,7 +1691,7 @@ const priorityCounts = {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b px-8 py-4">
+        <header className="bg-white border-b px-8 py-6 shadow-sm">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
             <div className="flex items-center gap-4">
@@ -1902,7 +1902,7 @@ const priorityCounts = {
 
         {/* Reports Tab */}
         {activeTab === "reports" && (
-          <main className="flex-1 overflow-auto p-8">
+          <main className="flex-1 overflow-hidden p-8">
             <h1 className="text-2xl font-bold mb-6">All Reports</h1>
 
             <div className="bg-white rounded-xl shadow border p-4 mb-4">
@@ -3069,7 +3069,7 @@ const priorityCounts = {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {parks.map(park => (
-            <div key={park.id} className="bg-white rounded-xl shadow border overflow-hidden group hover:shadow-lg transition-shadow">
+            <div key={park.id} className="bg-white rounded-xl flex flex-col justify-between shadow border overflow-hidden group hover:shadow-lg transition-shadow">
               {/* Park Image */}
               <div className="h-48 bg-gradient-to-br from-green-400 to-emerald-600 relative">
                  {park.images && park.images.length > 0 ? (
@@ -3143,8 +3143,10 @@ const priorityCounts = {
                   </div>
                 </div>
 
+
+              </div>
                 {/* Actions */}
-                <div className="flex gap-2 pt-4 border-t">
+                <div className="flex gap-2 p-4 mr-4 ml-4 border-t">
                   <button 
                     onClick={() => handleEditPark(park)}
                     className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 flex items-center justify-center gap-2"
@@ -3159,7 +3161,6 @@ const priorityCounts = {
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
             </div>
           ))}
         </div>

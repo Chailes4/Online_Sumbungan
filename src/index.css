@@ -18,6 +18,15 @@ html, body, #root {
   padding: 0;
 }
 
+button {
+  cursor: pointer;
+  font-size: medium;
+}
+
+.calendar { 
+  font-size: small;
+}
+
 /* Custom scrollbar for center feed */
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
