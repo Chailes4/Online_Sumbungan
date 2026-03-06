@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { Megaphone, ThumbsUp, ShieldCheck, AlertCircle } from "lucide-react";
+import { ThumbsUp, ShieldCheck, AlertCircle, Landmark } from "lucide-react";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -120,29 +120,30 @@ const Register = () => {
   };
 
   return (
+
     <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
       <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center">
-              <Megaphone className="w-5 h-5 text-white" />
+              <Landmark className="w-5 h-5 text-white" />
             </div>
-            <span className="font-semibold text-lg">Sumbungan sa Plaridel</span>
+            <span className="font-semibold text-lg">Sumbungan ng Plaridel</span>
           </div>
           <div className="flex items-center gap-6">
-            <Link to="/" className="text-gray-600 hover:text-gray-900">
+            <Link to="/" className="text-gray-600 hover:text-gray-900 font-semibold text-sm">
               Home
             </Link>
-            <Link to="/about" className="text-gray-600 hover:text-gray-900">
+            <Link to="/#about-us" className="text-gray-600 hover:text-gray-900 font-semibold text-sm">
               About
             </Link>
-            <Link to="/contact" className="text-gray-600 hover:text-gray-900">
+            <Link to="/#contact-us" className="text-gray-600 hover:text-gray-900 font-semibold text-sm">
               Contact
             </Link>
             <Link
-              to="/"
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
+              to="/Login"
+              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-semibold text-sm transition-colors"
             >
               Login
             </Link>
@@ -151,7 +152,7 @@ const Register = () => {
       </nav>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 pt-8">
+      <div className="max-w-7xl mx-auto px-6 pt-5">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left - Registration Form */}
           <div>

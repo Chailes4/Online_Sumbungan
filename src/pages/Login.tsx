@@ -113,6 +113,7 @@ const Login = () => {
   };
 
   return (
+    
     <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
       {/* LEFT SIDE */} 
       <div className="hidden md:flex flex-col justify-center px-16 bg-blue-600 text-white relative">
@@ -150,7 +151,27 @@ const Login = () => {
       </div>
 
       {/* RIGHT SIDE */}
-      <div className="flex items-center justify-center px-6 py-8">
+      <div className="flex flex-col items-center px-6 py-6 gap-12">
+        <div className="flex items-center justify-end mx-auto w-full max-w-3xl px-2">
+          <div className="flex items-center gap-6">
+            <Link to="/" className="text-gray-600 hover:text-gray-900 font-semibold text-sm">
+              Home
+            </Link>
+            <Link to="/#about-us" className="text-gray-600 hover:text-gray-900 font-semibold text-sm">
+              About
+            </Link>
+            <Link to="/#contact-us" className="text-gray-600 hover:text-gray-900 font-semibold text-sm">
+              Contact
+            </Link>
+            <Link
+              to="/Register"
+              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-semibold transition-colors text-sm"
+            >
+              Register
+            </Link>
+          </div>
+        </div>
+        <div className=""> 
         <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-xl border-t-4 border-blue-600 md:p-10">
           <h2 className="text-2xl font-bold mb-1">Welcome Back</h2>
           <p className="text-gray-500 mb-6">
@@ -262,6 +283,7 @@ const Login = () => {
               </Link>
             </p>
           </form>
+        </div>
         </div>
       </div>
     </div>

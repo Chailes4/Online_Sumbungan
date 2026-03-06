@@ -12,7 +12,7 @@
 
 /* Prevent page scrolling */
 html, body, #root {
-  overflow: hidden;
+  /* overflow: hidden; */ /* Removed to allow page scrolling */
   height: 100vh;
   margin: 0;
   padding: 0;
@@ -24,7 +24,7 @@ button {
 }
 
 .calendar { 
-  font-size: small;
+  font-size: x-small;
 }
 
 /* Custom scrollbar for center feed */
