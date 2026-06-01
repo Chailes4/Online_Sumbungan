@@ -196,8 +196,7 @@ function Header() {
             <div className="h-6 w-px bg-slate-300 mx-2" />
            <Link
               to="/Login"
-              className="bg-white text-blue-700 px-6 py-2 rounded-md hover:bg-blue-700 font-semibold text-sm transition-colors"
-            >
+              className="relative text-sm font-semibold text-slate-700 hover:text-blue-700 transition-colors duration-200 after:absolute after:bottom-[-4px] after:left-0 after:h-0.5 after:w-0 after:bg-blue-700 after:transition-all after:duration-300 hover:after:w-full" >
               Login
             </Link>
 
