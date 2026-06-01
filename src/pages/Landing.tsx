@@ -195,7 +195,7 @@ function Header() {
             ))}
             <div className="h-6 w-px bg-slate-300 mx-2" />
            <Link
-              to="/login"
+              to="/Login"
               className="bg-white text-blue-700 px-6 py-2 rounded-md hover:bg-blue-700 font-semibold text-sm transition-colors"
             >
               Login
@@ -277,7 +277,7 @@ function HeroSection() {
           <h1 style={{ opacity: loaded ? 1 : 0, transform: loaded ? "none" : "translateY(30px)", transition: "opacity 0.7s ease 0.25s, transform 0.7s cubic-bezier(0.22,1,0.36,1) 0.25s" }}
             className="text-5xl font-black leading-tight text-white sm:text-6xl lg:text-7xl"
           >
-            Isumbong Mo sa <span className="text-yellow-400">Plaridel</span>
+            Isumbong mo sa <span className="text-yellow-400">Plaridel</span>
           </h1>
 
           <p style={{ opacity: loaded ? 1 : 0, transform: loaded ? "none" : "translateY(20px)", transition: "opacity 0.7s ease 0.4s, transform 0.7s ease 0.4s" }}
