@@ -194,17 +194,19 @@ function Header() {
               </a>
             ))}
             <div className="h-6 w-px bg-slate-300 mx-2" />
-            <Link
-              to="/login"
+            <Link to="/Login"
               className="relative text-sm font-semibold text-slate-700 hover:text-blue-700 transition-colors duration-200 after:absolute after:bottom-[-4px] after:left-0 after:h-0.5 after:w-0 after:bg-blue-700 after:transition-all after:duration-300 hover:after:w-full"
            >
             Login
           </Link>
-            <Link to="/Register" className="text-sm font-semibold text-blue-700 hover:text-blue-900 transition-colors">
+
+            <Link to="/Register" 
+            className="text-sm font-semibold text-blue-700 hover:text-blue-900 transition-colors">
               <button className="rounded-lg bg-blue-700 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-700/20 hover:bg-blue-800 hover:scale-105 hover:shadow-xl hover:shadow-blue-700/30 active:scale-95 transition-all duration-200">
                 Register
               </button>
             </Link>
+
           </nav>
 
           <button
