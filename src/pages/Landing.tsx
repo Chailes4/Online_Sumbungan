@@ -195,7 +195,7 @@ function Header() {
             ))}
             <div className="h-6 w-px bg-slate-300 mx-2" />
            <Link
-              to="/Login"
+              to="/login"
               className="bg-white text-blue-700 px-6 py-2 rounded-md hover:bg-blue-700 font-semibold text-sm transition-colors"
             >
               Login
