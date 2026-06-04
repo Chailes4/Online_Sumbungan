@@ -671,6 +671,59 @@ function Footer() {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 export default function SumbunganLanding() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkScreen = () => {
+      setIsMobile(window.innerWidth < 1024); // below lg breakpoint
+    };
+
+    checkScreen();
+    window.addEventListener("resize", checkScreen);
+
+    return () => window.removeEventListener("resize", checkScreen);
+  }, []);
+
+  if (isMobile) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-6">
+      <div className="max-w-md w-full text-center bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 shadow-2xl">
+
+
+        {/* Title */}
+        <h1 className="text-3xl font-extrabold text-white mb-3">
+          Desktop Version Only
+        </h1>
+
+        {/* Description */}
+        <p className="text-slate-300 leading-relaxed mb-6">
+          Sumbungan ng Plaridel is currently optimized for desktop and laptop
+          devices. Please access this page using a larger screen for the best
+          experience.
+        </p>
+
+        {/* Divider */}
+        <div className="w-16 h-1 bg-yellow-500 rounded-full mx-auto mb-6"></div>
+
+        {/* Info Box */}
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-left">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined text-yellow-400">
+              info
+            </span>
+            <p className="text-sm text-slate-300">
+              Mobile support is currently under development. Please visit using
+              a desktop browser.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+  
+
   return (
     <>
       <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
