@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type RefObject } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -247,12 +247,12 @@ function Header() {
 // ─── HeroSection ──────────────────────────────────────────────────────────────
 
 function HeroSection() {
+  const navigate = useNavigate();
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), 80);
     return () => clearTimeout(t);
   }, []);
-
   return (
     <section className="relative w-full" id="home">
       <div className="absolute inset-0 z-0">
@@ -288,11 +288,17 @@ function HeroSection() {
           <div style={{ opacity: loaded ? 1 : 0, transform: loaded ? "none" : "translateY(20px)", transition: "opacity 0.7s ease 0.55s, transform 0.7s ease 0.55s" }}
             className="flex flex-col sm:flex-row gap-4"
           >
-            <button className="inline-flex items-center justify-center rounded-lg bg-blue-700 px-8 py-4 text-lg font-bold text-white shadow-xl shadow-blue-700/30 hover:scale-105 hover:bg-blue-600 hover:shadow-2xl hover:shadow-blue-700/40 active:scale-95 transition-all duration-200">
+            <button
+              onClick={() => navigate("/Login")}
+              className="inline-flex items-center justify-center rounded-lg bg-blue-700 px-8 py-4 text-lg font-bold text-white shadow-xl shadow-blue-700/30 hover:scale-105 hover:bg-blue-600 hover:shadow-2xl hover:shadow-blue-700/40 active:scale-95 transition-all duration-200"
+            >
               Start Reporting Now
               <MaterialIcon name="arrow_forward" className="ml-2" />
             </button>
-            <button className="inline-flex items-center justify-center rounded-lg bg-white/10 backdrop-blur-md border border-white/20 px-8 py-4 text-lg font-bold text-white hover:bg-white/20 hover:border-white/40 hover:scale-105 active:scale-95 transition-all duration-200">
+            <button
+              onClick={() => navigate("/Login")}
+              className="inline-flex items-center justify-center rounded-lg bg-white/10 backdrop-blur-md border border-white/20 px-8 py-4 text-lg font-bold text-white hover:bg-white/20 hover:border-white/40 hover:scale-105 active:scale-95 transition-all duration-200"
+            >
               View Active Reports
             </button>
           </div>
@@ -548,16 +554,14 @@ function ContactSection() {
             className="flex flex-col h-full"
             style={{ opacity: mapInView ? 1 : 0, transform: mapInView ? "none" : "translateX(40px)", transition: "opacity 0.8s ease 0.15s, transform 0.8s cubic-bezier(0.22,1,0.36,1) 0.15s" }}
           >
-            <div className="flex-grow rounded-2xl overflow-hidden shadow-xl border border-slate-200 mb-8 bg-slate-100 relative min-h-[300px] group hover:shadow-2xl transition-shadow duration-300">
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
-                <MaterialIcon name="map" className="text-6xl text-blue-700 mb-4 group-hover:scale-110 transition-transform duration-300" />
-                <p className="font-bold text-slate-800">Plaridel Municipal Hall</p>
-                <p className="text-sm text-slate-500">Poblacion, Plaridel, Bulacan 3004</p>
-                <div className="mt-4 px-4 py-2 bg-yellow-500 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-yellow-400 cursor-pointer transition-colors duration-200 hover:scale-105 inline-block">
-                  Map View
-                </div>
-              </div>
-            </div>
+            <div className="flex-grow rounded-2xl overflow-hidden shadow-xl border border-slate-200 mb-8 bg-slate-100 relative min-h-[300px]">
+            <iframe
+              title="Plaridel Municipal Hall Map"
+              src="https://www.google.com/maps?q=Plaridel%20Municipal%20Hall%20Bulacan&output=embed"
+              className="w-full h-full"
+              loading="lazy"
+            ></iframe>
+          </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {CONTACT_INFO.map((info, i) => (
@@ -653,7 +657,7 @@ function Footer() {
         </div>
 
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-xs text-slate-500">© 2024 Municipality of Plaridel. All rights reserved.</p>
+          <p className="text-xs text-slate-500">© 2025 Municipality of Plaridel. All rights reserved.</p>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
             <span className="text-xs font-medium text-slate-500">System Status: Operational</span>

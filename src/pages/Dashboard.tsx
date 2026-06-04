@@ -3790,22 +3790,7 @@ if (showFileReport) {
                   )}
                 </div>
 
-                {/* ========== COMMUNITY MISSION WIDGET ========== */}
-                <div className="bg-white rounded-lg shadow-sm p-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-semibold text-base">Community Mission</h3>
-                      <ThumbsUp className="w-5 h-5 text-blue-600 fill-blue-300" />
-                  </div>
-                  <p className="text-sm text-gray-600 mb-3">
-                    We aim to build a safer, more connected neighborhood through active participation and transparent communication.
-                  </p>
-                  <div className="flex gap-2">
-                    <span className="text-xs bg-gray-100 px-2.5 py-1 rounded-full hover:bg-blue-500 hover:text-white">Respectful</span>
-                    <span className="text-xs bg-gray-100 px-2.5 py-1 rounded-full hover:bg-blue-500 hover:text-white">Helpful</span>
-                    <span className="text-xs bg-gray-100 px-2.5 py-1 rounded-full hover:bg-blue-500 hover:text-white">Verified</span>
-                  </div>
-                </div>
-                
+               
               </>
             )}
 
@@ -3975,20 +3960,6 @@ if (showFileReport) {
                     </div>
                   </div>
                 </div>
-
-              {/* Public Safety Notice */}
-          <div className="bg-red-50 rounded-lg shadow-md shadow-red-300 border-l-4 border-red-500 flex gap-2 p-3">
-            <AlertTriangle className="w-4 h-4 text-red-600 fill-red-200 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-[12px] font-semibold text-red-600">
-                Public Safety Notice
-              </p>
-              <p className="text-[12px] text-gray-600 leading-tight">
-                Verified information is updated every 15 minutes. For immediate
-                life-threatening emergencies, dial 911 directly.
-              </p>
-            </div>
-          </div>
               </>
             )}
 

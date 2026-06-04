@@ -421,9 +421,8 @@ const Register = () => {
                 <Link to="/privacy" className="text-blue-600 hover:underline">
                   Privacy Policy
                 </Link>
-                . © 2024 Sumbungan sa Plaridel
+                . © 2025 Sumbungan sa Plaridel
               </p>
-              <Link to="/officialguidelines" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-center block mb-4">
               <div className="bg-gradient-to-r from-yellow-200 to-yellow-300 text-center py-8 rounded-lg hover:from-yellow-100 hover:to-yellow-400 transition-colors">
                 <span className="text-gray-700 font-semibold text-4xl opacity-50">
                   COMMUNITY SAFE ENVIRONMENT
@@ -432,7 +431,6 @@ const Register = () => {
                   PLARIDEL PRIDE
                 </div>
               </div>
-              </Link>
             </div>
           </div>
         </div>
