@@ -82,14 +82,11 @@ const AdminReportDetails = ({ reportId, onBack }: { reportId: string; onBack: ()
 
   const fetchReport = async () => {
     try {
-      const { data, error } = await supabase
-        .from("reports")
-        .select(`
-          *,
-          users (full_name, email, barangay)
-        `)
-        .eq("id", reportId)
-        .single();
+     const { data, error } = await supabase
+      .from("reports")
+      .select("*")
+      .eq("id", reportId)
+      .single();
 
       if (error) throw error;
       setReport(data);
