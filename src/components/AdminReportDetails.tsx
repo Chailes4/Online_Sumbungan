@@ -299,48 +299,44 @@ const AdminReportDetails = ({ reportId, onBack }: { reportId: string; onBack: ()
       .openPopup();
   };
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (!report) return;
-    
-    
-    setUpdating(true);
-    setShowStatusDropdown(false);
-    const oldStatus = report.status;
-    
-    try {
-      // Update the report status
-      const { error: updateError } = await supabase
-        .from("reports")
-        .update({ status: newStatus })
-        .eq("id", report.id);
+const handleStatusChange = async (newStatus: string) => {
+  if (!report || !user) return;
 
-      if (updateError) throw updateError;
+  setUpdating(true);
+  setShowStatusDropdown(false);
 
-      // Log the activity
-      const { error: logError } = await supabase
-        .from("activity_logs")
-        .insert({
-          report_id: report.id,
-          user_id: user.id,
-          action: 'status_change',
-          description: `Status changed from '${getStatusLabel(oldStatus)}' to '${getStatusLabel(newStatus)}'`,
-          old_value: oldStatus,
-          new_value: newStatus
-        });
+  const oldStatus = report.status;
 
-      if (logError) throw logError;
+  try {
+    const { error } = await supabase
+      .from("reports")
+      .update({ status: newStatus })
+      .eq("id", report.id);
 
-      setReport({ ...report, status: newStatus as any });
-      await fetchActivityLogs(); // Refresh logs
-      await fetchReport(); // 🔥 force sync with DB
-      alert("Status updated successfully!");
-    } catch (error: any) {
-      console.error("Error updating status:", error);
-      alert("Failed to update status: " + error.message);
-    } finally {
-      setUpdating(false);
-    }
-  };
+    if (error) throw error;
+
+    // ❗ DO NOT re-fetch immediately (this is causing rollback issue)
+    setReport(prev => prev ? { ...prev, status: newStatus as any } : prev);
+
+    await supabase.from("activity_logs").insert({
+      report_id: report.id,
+      user_id: user.id,
+      action: "status_change",
+      description: `Status changed from '${oldStatus}' to '${newStatus}'`,
+      old_value: oldStatus,
+      new_value: newStatus
+    });
+
+    await fetchActivityLogs();
+
+    alert("Status updated!");
+  } catch (error: any) {
+    console.error(error);
+    alert("Failed: " + error.message);
+  } finally {
+    setUpdating(false);
+  }
+};
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
