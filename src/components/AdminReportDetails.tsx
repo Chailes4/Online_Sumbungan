@@ -83,10 +83,17 @@ const AdminReportDetails = ({ reportId, onBack }: { reportId: string; onBack: ()
   const fetchReport = async () => {
     try {
      const { data, error } = await supabase
-      .from("reports")
-      .select("*")
-      .eq("id", reportId)
-      .single();
+  .from("reports")
+  .select(`
+    *,
+    users:user_id (
+      full_name,
+      email,
+      barangay
+    )
+  `)
+  .eq("id", reportId)
+  .single();
 
       if (error) throw error;
       setReport(data);
@@ -305,12 +312,19 @@ const handleStatusChange = async (newStatus: string) => {
   const oldStatus = report.status;
 
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("reports")
       .update({ status: newStatus })
-      .eq("id", report.id);
+      .eq("id", report.id)
+        .select();
+
+        console.log("Update result:", data, "Error:", error);
+
 
     if (error) throw error;
+  if (!data || data.length === 0) {
+  throw new Error("No rows updated — check RLS policies");
+}
 
     // ❗ DO NOT re-fetch immediately (this is causing rollback issue)
     setReport(prev => prev ? { ...prev, status: newStatus as any } : prev);
