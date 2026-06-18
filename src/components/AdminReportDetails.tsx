@@ -302,6 +302,7 @@ const AdminReportDetails = ({ reportId, onBack }: { reportId: string; onBack: ()
   const handleStatusChange = async (newStatus: string) => {
     if (!report) return;
     
+    
     setUpdating(true);
     setShowStatusDropdown(false);
     const oldStatus = report.status;
@@ -331,6 +332,7 @@ const AdminReportDetails = ({ reportId, onBack }: { reportId: string; onBack: ()
 
       setReport({ ...report, status: newStatus as any });
       await fetchActivityLogs(); // Refresh logs
+      await fetchReport(); // 🔥 force sync with DB
       alert("Status updated successfully!");
     } catch (error: any) {
       console.error("Error updating status:", error);
